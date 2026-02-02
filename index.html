@@ -1,0 +1,1659 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expresso Lanche</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    body {
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    .cart-badge {
+      animation: bounce 0.3s ease;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+    .item-enter {
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .cart-float-button {
+      display: none;
+    }
+    
+    .cart-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 999;
+    }
+    
+    .cart-modal-overlay.active {
+      display: block;
+    }
+    
+    .obs-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 9998;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .obs-modal-overlay.active {
+      display: flex;
+    }
+    
+    @media (max-width: 768px) {
+      .cart-float-button {
+        display: flex;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: var(--primary-color);
+        color: var(--text-color);
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 24px;
+      }
+      
+      .cart-sidebar {
+        display: none;
+      }
+      
+      .cart-sidebar.mobile-active {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: 90%;
+        max-width: 400px;
+        z-index: 1000;
+        overflow-y: auto;
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto"></div>
+  <script>
+    const defaultConfig = {
+      restaurant_name: "Expresso Lanche",
+      restaurant_subtitle: "Nosso Cardápio",
+      cart_title: "Seu Pedido",
+      cart_empty_message: "Seu carrinho está vazio",
+      send_order_button: "Enviar Pedido pelo WhatsApp",
+      background_color: "#1a1a1a",
+      surface_color: "#2d2d2d",
+      text_color: "#ffffff",
+      primary_action_color: "#ff6b35",
+      secondary_action_color: "#4ecdc4",
+      font_family: "Poppins",
+      font_size: 16
+    };
+
+    let cart = [];
+    let customizationState = {};
+    let obsStorage = {};
+    const WHATSAPP_NUMBER = "5562985505754";
+
+    function openObsModal(itemId) {
+      const baseSize = window.elementSdk?.config?.font_size || defaultConfig.font_size;
+      const surfaceColor = window.elementSdk?.config?.surface_color || defaultConfig.surface_color;
+      const textColor = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+      const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+      const bgColor = window.elementSdk?.config?.background_color || defaultConfig.background_color;
+
+      const existingModal = document.getElementById('obs-modal');
+      if (existingModal) existingModal.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'obs-modal';
+      modal.className = 'obs-modal-overlay active';
+      modal.innerHTML = `
+        <div style="background: ${surfaceColor}; border-radius: 12px; padding: ${baseSize * 1.5}px; max-width: 400px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+          <h3 style="font-size: ${baseSize * 1.2}px; font-weight: 700; margin: 0 0 ${baseSize}px 0; color: ${primaryColor};">💬 Adicionar Observação</h3>
+          <textarea id="obs-textarea-${itemId}" placeholder="Ex: sem cebola, bem passado, ponto da carne..." style="width: 100%; padding: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 8px; font-size: ${baseSize * 0.9}px; font-family: inherit; resize: vertical; min-height: ${baseSize * 6}px; box-sizing: border-box;">${obsStorage[itemId] || ''}</textarea>
+          <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize}px;">
+            <button onclick="closeObsModal()" style="flex: 1; padding: ${baseSize * 0.7}px; background: transparent; color: ${textColor}; border: 1px solid ${textColor}; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Cancelar</button>
+            <button onclick="saveObs('${itemId}')" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: ${baseSize * 0.9}px;">Salvar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      document.getElementById(`obs-textarea-${itemId}`).focus();
+    }
+
+    function closeObsModal() {
+      const modal = document.getElementById('obs-modal');
+      if (modal) modal.remove();
+    }
+
+    function saveObs(itemId) {
+      const textarea = document.getElementById(`obs-textarea-${itemId}`);
+      if (textarea) {
+        obsStorage[itemId] = textarea.value.trim();
+        const obsButton = document.getElementById(`obs-btn-${itemId}`);
+        if (obsButton) {
+          const secondaryColor = window.elementSdk?.config?.secondary_action_color || defaultConfig.secondary_action_color;
+          if (obsStorage[itemId]) {
+            obsButton.textContent = '💬';
+            obsButton.style.background = secondaryColor;
+          } else {
+            obsButton.textContent = '💬';
+            obsButton.style.background = 'rgba(255,255,255,0.1)';
+          }
+        }
+      }
+      closeObsModal();
+    }
+
+    window.openObsModal = openObsModal;
+    window.closeObsModal = closeObsModal;
+    window.saveObs = saveObs;
+
+    const menuData = {
+      lanches: {
+        title: "🍔 Lanches Tradicionais",
+        items: [
+          { name: "Americano", price: 21, needsMeat: true, description: "Pão, carne, presunto, salsicha, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Salsicha", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "Simples", price: 23, needsMeat: true, description: "Pão, carne, presunto, mussarela, salsicha, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Salsicha", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "Super", price: 24, needsMeat: true, description: "Pão, carne, presunto, mussarela, salsicha, ovo, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Salsicha", "Ovo", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "X-Tudo", price: 25, needsMeat: true, description: "Pão, carne, presunto, mussarela, ovo, bacon, salsicha, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Ovo", "Bacon", "Salsicha", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "X-Bacon", price: 26, needsMeat: true, description: "Pão, carne, presunto, mussarela, ovo, dobro de bacon, salsicha, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Ovo", "Bacon", "Salsicha", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "Mestre", price: 27, needsMeat: true, description: "P����o, carne, presunto, mussarela, salsicha, ovo, bacon, calabresa, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Salsicha", "Ovo", "Bacon", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "Duplo", price: 30, needsMeat: true, description: "Pão, duas carnes, dois ovos, presunto, mussarela, salsicha, bacon, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Ovo", "Bacon", "Salsicha", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] },
+          { name: "Só Quente", price: 25, needsMeat: false, description: "Pão, carne, presunto, mussarela, ovo, salsicha e calabresa", includes: ["Presunto", "Mussarela", "Ovo", "Salsicha"] },
+          { name: "Misto", price: 13, needsMeat: false, description: "Pão, presunto e mussarela", includes: ["Presunto", "Mussarela"] },
+          { name: "Bauru Simples", price: 15, needsMeat: false, description: "Pão, presunto, mussarela, tomate e alface", includes: ["Presunto", "Mussarela", "Tomate", "Alface"] },
+          { name: "Bauru Super", price: 20, needsMeat: false, description: "Pão, presunto, mussarela, salsicha, ovo, tomate, alface, abacaxi, milho e batata palha", includes: ["Presunto", "Mussarela", "Salsicha", "Ovo", "Tomate", "Alface", "Abacaxi", "Milho", "Batata palha"] }
+        ],
+        meatOptions: [
+          { name: "Hambúrguer caseiro", price: 0 },
+          { name: "Filé de frango", price: 0 },
+          { name: "Filé bovino", price: 0 }
+        ],
+        customizableIngredients: [
+          { name: "Hambúrguer", price: 5, max: 1, removable: true, isSalad: false },
+          { name: "Filé bovino", price: 6, max: 1, removable: true, isSalad: false },
+          { name: "Filé de frango", price: 6, max: 1, removable: true, isSalad: false },
+          { name: "Bacon", price: 4, max: 2, removable: true, isSalad: false },
+          { name: "Cheddar", price: 5, max: 2, removable: true, isSalad: false },
+          { name: "Presunto", price: 4, max: 2, removable: true, isSalad: false },
+          { name: "Mussarela", price: 4, max: 2, removable: true, isSalad: false },
+          { name: "Ovo", price: 2, max: 2, removable: true, isSalad: false },
+          { name: "Salsicha", price: 3, max: 2, removable: true, isSalad: false },
+          { name: "Milho", price: 1, max: 2, removable: true, isSalad: true },
+          { name: "Tomate", price: 1, max: 2, removable: true, isSalad: true },
+          { name: "Alface", price: 1, max: 2, removable: true, isSalad: true },
+          { name: "Abacaxi", price: 1, max: 2, removable: true, isSalad: true },
+          { name: "Batata palha", price: 1, max: 2, removable: true, isSalad: true }
+        ]
+      },
+      burgers: {
+        title: "🍔 Sanduíches Burger Gourmet",
+        items: [
+          { name: "X-Burger", price: 23, description: "Pão de brioche, hambúrguer, cheddar, alface, tomate e cebola", includes: ["Alface", "Tomate", "Cebola"] },
+          { name: "Double Burger", price: 29, description: "Pão de brioche, 2 hambúrgueres, cheddar, bacon, alface, tomate e cebola", includes: ["Alface", "Tomate", "Cebola"] },
+          { name: "Littler Bacon", price: 26, description: "Pão de brioche, hambúrguer, fatias de bacon, cheddar, alface e cebola", includes: ["Alface", "Cebola"] }
+        ],
+        customizableIngredients: [
+          { name: "Alface", price: 1, max: 10, removable: true },
+          { name: "Tomate", price: 1, max: 10, removable: true },
+          { name: "Cebola", price: 1, max: 10, removable: true },
+          { name: "Hambúrguer", price: 5, max: 5, removable: false },
+          { name: "Bacon", price: 4, max: 5, removable: false },
+          { name: "Cheddar", price: 5, max: 5, removable: false },
+          { name: "Presunto", price: 4, max: 5, removable: false },
+          { name: "Muçarela", price: 4, max: 5, removable: false },
+          { name: "Salsicha", price: 3, max: 5, removable: false }
+        ]
+      },
+      batatas: {
+        title: "🍟 Porções de Batata",
+        items: [
+          { name: "Batata Pequena", price: 15, hasAddons: true },
+          { name: "Batata Média", price: 25, hasAddons: true },
+          { name: "Batata Grande", price: 30, hasAddons: true }
+        ],
+        addons: [
+          { name: "Cheddar", price: 5 },
+          { name: "Bacon", price: 10 }
+        ]
+      },
+      jantinha: {
+        title: "🍽️ Jantinha",
+        items: [
+          { name: "Jantinha Completa", price: 24, description: "Arroz, feijão tropeiro, mandioca, vinagrete e espetinho", hasAddons: true, includes: ["Arroz", "Feijão tropeiro", "Mandioca", "Vinagrete"] }
+        ],
+        espetinhoOptions: [
+          { name: "Frango com bacon", price: 0 },
+          { name: "Alcatra", price: 0 },
+          { name: "Linguiça apimentada", price: 0 },
+          { name: "Cafita", price: 0 },
+          { name: "Coração de galinha", price: 0 }
+        ],
+        customizableIngredients: [
+          { name: "Arroz", price: 0, max: 0, removable: true },
+          { name: "Feijão tropeiro", price: 0, max: 0, removable: true },
+          { name: "Mandioca", price: 0, max: 0, removable: true },
+          { name: "Vinagrete", price: 0, max: 0, removable: true },
+          { name: "Ovo", price: 2, max: 3, removable: false },
+          { name: "Bacon", price: 10, max: 2, removable: false },
+          { name: "Calabresa", price: 5, max: 2, removable: false }
+        ]
+      },
+      bebidas: {
+        title: "🥤 Bebidas",
+        categories: [
+          {
+            name: "Refrigerante Lata",
+            items: [
+              { name: "Coca-Cola lata", price: 6 },
+              { name: "Guaraná lata", price: 6 },
+              { name: "Fanta lata", price: 6 },
+              { name: "Coca-Cola Zero lata", price: 7 }
+            ]
+          },
+          {
+            name: "Refrigerante 1 Litro",
+            items: [
+              { name: "Coca-Cola 1 litro", price: 10 },
+              { name: "Coca-Cola Zero 1 litro", price: 11 },
+              { name: "Guaraná 1 litro", price: 9 },
+              { name: "Fanta 1 litro", price: 9 }
+            ]
+          },
+          {
+            name: "Refrigerante 2 Litros",
+            items: [
+              { name: "Coca-Cola 2 litros", price: 14 },
+              { name: "Guaraná 2 litros", price: 12 },
+              { name: "Fanta 2 litros", price: 12 },
+              { name: "Coca-Cola Zero 2 litros", price: 15 }
+            ]
+          },
+          {
+            name: "Água",
+            items: [
+              { name: "Água sem gás (500 ml)", price: 3 },
+              { name: "Água com gás (500 ml)", price: 4 }
+            ]
+          }
+        ]
+      },
+      sucos: {
+        title: "🥤 Sucos (copo 500 ml)",
+        items: [
+          { name: "Suco", price: 8, hasFlavors: true }
+        ],
+        flavors: ["Maracujá", "Morango", "Açaí", "Cupuaçu", "Caju", "Tamarindo"]
+      },
+      cremes: {
+        title: "🍨 Creme (copo 500 ml)",
+        items: [
+          { name: "Creme", price: 14, hasFlavors: true }
+        ],
+        flavors: ["Maracujá", "Morango", "Açaí", "Cupuaçu", "Caju", "Tamarindo"]
+      },
+      caldo: {
+        title: "🍲 Caldo de Frango",
+        items: [
+          { name: "Caldo de Frango 300ml", price: 0, description: "Acompanha: torrada + cheiro-verde" },
+          { name: "Caldo de Frango 500ml", price: 0, description: "Acompanha: torrada + cheiro-verde" }
+        ]
+      }
+    };
+
+    function initCustomizationState(itemId) {
+      if (!customizationState[itemId]) {
+        customizationState[itemId] = {};
+      }
+    }
+
+    function updateMeatPrice(itemId) {
+      updateItemPriceDisplay(itemId);
+    }
+
+    function isIngredientIncluded(itemId, ingredientName) {
+      let category = 'lanches';
+      if (itemId.startsWith('burger-')) category = 'burgers';
+      if (itemId.startsWith('jantinha-')) category = 'jantinha';
+      
+      const itemName = itemId.replace('lanche-', '').replace('burger-', '').replace('jantinha-', '').replace(/-/g, ' ');
+      const item = menuData[category].items.find(i => i.name.replace(/\s/g, '-') === itemName.replace(/\s/g, '-'));
+      
+      if (!item || !item.includes) return false;
+      return item.includes.includes(ingredientName);
+    }
+
+    function removeIngredient(itemId, ingredientName) {
+      initCustomizationState(itemId);
+      
+      // Verificar se o ingrediente está incluído no sanduíche
+      if (!isIngredientIncluded(itemId, ingredientName)) {
+        return; // Não permite remover se não está incluído
+      }
+      
+      let category = 'lanches';
+      if (itemId.startsWith('burger-')) category = 'burgers';
+      if (itemId.startsWith('jantinha-')) category = 'jantinha';
+      
+      const ingredient = menuData[category].customizableIngredients.find(i => i.name === ingredientName);
+      const currentQty = customizationState[itemId][ingredientName] || 0;
+      
+      if (ingredient && ingredient.removable) {
+        // Se já está removido (-1), volta para 0 (incluir novamente)
+        if (currentQty === -1) {
+          customizationState[itemId][ingredientName] = 0;
+        } else {
+          // Se não está removido, remove (-1)
+          customizationState[itemId][ingredientName] = -1;
+        }
+        updateCustomizationDisplay(itemId);
+      }
+    }
+
+    function updateIngredientQuantity(itemId, ingredientName, delta) {
+      initCustomizationState(itemId);
+      const current = customizationState[itemId][ingredientName] || 0;
+      
+      // Se está removido (-1), não permite usar + ou -
+      if (current === -1 && delta !== 0) {
+        return;
+      }
+      
+      const newValue = current + delta;
+      
+      // Encontrar o ingrediente para verificar o máximo
+      let category = 'lanches';
+      if (itemId.startsWith('burger-')) category = 'burgers';
+      if (itemId.startsWith('jantinha-')) category = 'jantinha';
+      
+      const ingredient = menuData[category].customizableIngredients.find(i => i.name === ingredientName);
+      
+      // Permite apenas valores entre 0 e max (não permite negativos aqui)
+      if (ingredient && newValue >= 0 && newValue <= ingredient.max) {
+        customizationState[itemId][ingredientName] = newValue;
+        updateCustomizationDisplay(itemId);
+      }
+    }
+
+    function updateCustomizationDisplay(itemId) {
+      const state = customizationState[itemId] || {};
+      let category = 'lanches';
+      if (itemId.startsWith('burger-')) category = 'burgers';
+      if (itemId.startsWith('jantinha-')) category = 'jantinha';
+      
+      if (!menuData[category].customizableIngredients) return;
+      
+      menuData[category].customizableIngredients.forEach(ingredient => {
+        const qty = state[ingredient.name] || 0;
+        const isIncluded = isIngredientIncluded(itemId, ingredient.name);
+        
+        const qtyElement = document.getElementById(`qty-${itemId}-${ingredient.name.replace(/\s/g, '')}`);
+        const minusBtn = document.getElementById(`minus-${itemId}-${ingredient.name.replace(/\s/g, '')}`);
+        const plusBtn = document.getElementById(`plus-${itemId}-${ingredient.name.replace(/\s/g, '')}`);
+        const removeBtn = document.getElementById(`remove-${itemId}-${ingredient.name.replace(/\s/g, '')}`);
+        
+        if (qtyElement) {
+          qtyElement.textContent = qty === -1 ? '✗' : qty;
+          qtyElement.style.fontWeight = qty !== 0 ? '700' : '400';
+          qtyElement.style.color = qty === -1 ? '#dc2626' : '';
+        }
+        
+        if (removeBtn) {
+          if (!isIncluded) {
+            // Ingrediente NÃO está incluído - botão desabilitado e oculto
+            removeBtn.style.display = 'none';
+          } else {
+            removeBtn.style.display = 'block';
+            if (qty === -1) {
+              removeBtn.textContent = 'Incluir';
+              removeBtn.style.background = '#16a34a';
+              removeBtn.style.opacity = '1';
+            } else {
+              removeBtn.textContent = 'Remover';
+              removeBtn.style.background = '#dc2626';
+              removeBtn.style.opacity = '1';
+            }
+            removeBtn.style.cursor = 'pointer';
+          }
+        }
+        
+        if (minusBtn) {
+          const canMinus = qty > 0;
+          minusBtn.style.opacity = canMinus ? '1' : '0.3';
+          minusBtn.style.cursor = canMinus ? 'pointer' : 'not-allowed';
+        }
+        
+        if (plusBtn) {
+          plusBtn.style.opacity = qty < ingredient.max ? '1' : '0.3';
+          plusBtn.style.cursor = qty < ingredient.max ? 'pointer' : 'not-allowed';
+        }
+      });
+      
+      updateItemPriceDisplay(itemId);
+    }
+
+    function updateItemPriceDisplay(itemId) {
+      const state = customizationState[itemId] || {};
+      let category = 'lanches';
+      if (itemId.startsWith('burger-')) category = 'burgers';
+      if (itemId.startsWith('jantinha-')) category = 'jantinha';
+      
+      const itemName = itemId.replace('lanche-', '').replace('burger-', '').replace('jantinha-', '').replace(/-/g, ' ');
+      const item = menuData[category].items.find(i => i.name.replace(/\s/g, '-') === itemName.replace(/\s/g, '-'));
+      
+      if (!item) return;
+      
+      let totalPrice = item.price;
+      
+      // Adicionar preço da carne se aplicável (lanches)
+      if (item.needsMeat) {
+        const meatSelect = document.getElementById(`meat-${itemId}`);
+        if (meatSelect && meatSelect.value) {
+          const selectedOption = meatSelect.options[meatSelect.selectedIndex];
+          const meatPrice = parseFloat(selectedOption.dataset.price || 0);
+          totalPrice += meatPrice;
+        }
+      }
+      
+      // Adicionar preço do espetinho se aplicável (jantinha)
+      if (category === 'jantinha') {
+        const espetinhoSelect = document.getElementById(`espetinho-${itemId}`);
+        if (espetinhoSelect && espetinhoSelect.value) {
+          const selectedOption = espetinhoSelect.options[espetinhoSelect.selectedIndex];
+          const espetinhoPrice = parseFloat(selectedOption.dataset.price || 0);
+          totalPrice += espetinhoPrice;
+        }
+      }
+      
+      // Calcular valores removidos e adicionados
+      let totalRemovedValue = 0;
+      let itemsToAdd = [];
+      
+      if (menuData[category].customizableIngredients) {
+        menuData[category].customizableIngredients.forEach(ingredient => {
+        const qty = state[ingredient.name] || 0;
+        
+        if (qty === -1) {
+          // Acumula o valor dos ingredientes removidos
+          totalRemovedValue += ingredient.price;
+        } else if (qty > 0) {
+          // Guarda os itens que serão adicionados
+          for (let i = 0; i < qty; i++) {
+            itemsToAdd.push({ name: ingredient.name, price: ingredient.price });
+          }
+        }
+      });
+      }
+      
+      // Ordena os itens a adicionar do mais caro para o mais barato
+      itemsToAdd.sort((a, b) => b.price - a.price);
+      
+      // Aplica o desconto: usa o valor removido para compensar os adicionais
+      let remainingCredit = totalRemovedValue;
+      itemsToAdd.forEach(item => {
+        if (remainingCredit >= item.price) {
+          // Se o crédito cobre o item inteiro, não cobra nada
+          remainingCredit -= item.price;
+        } else if (remainingCredit > 0) {
+          // Se o crédito cobre parcialmente, cobra apenas a diferença
+          totalPrice += (item.price - remainingCredit);
+          remainingCredit = 0;
+        } else {
+          // Se não há mais crédito, cobra o valor total
+          totalPrice += item.price;
+        }
+      });
+      
+      const priceElement = document.getElementById(`price-${itemId}`);
+      if (priceElement) {
+        priceElement.textContent = `R$ ${totalPrice.toFixed(2)}`;
+      }
+    }
+
+    function generateId() {
+      return Date.now() + Math.random();
+    }
+
+    function addToCart(item, category, selectedOptions = {}) {
+      const existingItem = cart.find(cartItem => 
+        cartItem.name === item.name && 
+        JSON.stringify(cartItem.selectedOptions) === JSON.stringify(selectedOptions)
+      );
+
+      if (existingItem) {
+        existingItem.quantity = (existingItem.quantity || 1) + 1;
+        existingItem.totalPrice = calculateItemTotal(item.price, selectedOptions) * existingItem.quantity;
+      } else {
+        const cartItem = {
+          id: generateId(),
+          name: item.name,
+          price: item.price,
+          category: category,
+          selectedOptions: selectedOptions,
+          quantity: 1,
+          totalPrice: calculateItemTotal(item.price, selectedOptions)
+        };
+        cart.push(cartItem);
+      }
+      updateUI();
+    }
+
+    function calculateItemTotal(basePrice, options) {
+      let total = basePrice;
+      
+      if (options.meatPrice) {
+        total += options.meatPrice;
+      }
+      
+      if (options.espetinhoPrice) {
+        total += options.espetinhoPrice;
+      }
+      
+      if (options.ingredients) {
+        const category = options.category || 'lanches';
+        let totalRemovedValue = 0;
+        let itemsToAdd = [];
+        
+        Object.entries(options.ingredients).forEach(([name, qty]) => {
+          const ingredient = menuData[category].customizableIngredients.find(i => i.name === name);
+          
+          if (ingredient) {
+            if (qty === -1) {
+              // Acumula o valor dos ingredientes removidos
+              totalRemovedValue += ingredient.price;
+            } else if (qty > 0) {
+              // Guarda os itens que serão adicionados
+              for (let i = 0; i < qty; i++) {
+                itemsToAdd.push({ name: ingredient.name, price: ingredient.price });
+              }
+            }
+          }
+        });
+        
+        // Ordena os itens a adicionar do mais caro para o mais barato
+        itemsToAdd.sort((a, b) => b.price - a.price);
+        
+        // Aplica o desconto: usa o valor removido para compensar os adicionais
+        let remainingCredit = totalRemovedValue;
+        itemsToAdd.forEach(item => {
+          if (remainingCredit >= item.price) {
+            // Se o crédito cobre o item inteiro, não cobra nada
+            remainingCredit -= item.price;
+          } else if (remainingCredit > 0) {
+            // Se o crédito cobre parcialmente, cobra apenas a diferença
+            total += (item.price - remainingCredit);
+            remainingCredit = 0;
+          } else {
+            // Se não há mais crédito, cobra o valor total
+            total += item.price;
+          }
+        });
+      }
+      
+      if (options.addons) {
+        options.addons.forEach(addon => {
+          total += addon.price;
+        });
+      }
+      
+      return total;
+    }
+
+    function removeFromCart(itemId) {
+      cart = cart.filter(item => item.id !== itemId);
+      updateUI();
+    }
+
+    function increaseQuantity(itemId) {
+      const item = cart.find(i => i.id === itemId);
+      if (item) {
+        item.quantity += 1;
+        const unitPrice = calculateItemTotal(item.price, item.selectedOptions);
+        item.totalPrice = unitPrice * item.quantity;
+        updateUI();
+      }
+    }
+
+    function decreaseQuantity(itemId) {
+      const item = cart.find(i => i.id === itemId);
+      if (item) {
+        if (item.quantity > 1) {
+          item.quantity -= 1;
+          const unitPrice = calculateItemTotal(item.price, item.selectedOptions);
+          item.totalPrice = unitPrice * item.quantity;
+          updateUI();
+        } else {
+          removeFromCart(itemId);
+        }
+      }
+    }
+
+    function getCartTotal() {
+      return cart.reduce((sum, item) => sum + item.totalPrice, 0);
+    }
+
+    function sendToWhatsApp() {
+      if (cart.length === 0) return;
+      
+      // Mostrar formulário de dados
+      showCustomerDataForm();
+    }
+
+    function showCustomerDataForm() {
+      const baseSize = window.elementSdk?.config?.font_size || defaultConfig.font_size;
+      const bgColor = window.elementSdk?.config?.background_color || defaultConfig.background_color;
+      const surfaceColor = window.elementSdk?.config?.surface_color || defaultConfig.surface_color;
+      const textColor = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+      const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+      const secondaryColor = window.elementSdk?.config?.secondary_action_color || defaultConfig.secondary_action_color;
+
+      const overlay = document.createElement('div');
+      overlay.id = 'customer-data-overlay';
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: ${baseSize}px;
+        overflow-y: auto;
+      `;
+
+      overlay.innerHTML = `
+        <div style="background: ${surfaceColor}; border-radius: 16px; padding: ${baseSize * 1.5}px; max-width: 500px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+          <h3 style="font-size: ${baseSize * 1.3}px; font-weight: 700; margin: 0 0 ${baseSize}px 0; color: ${primaryColor};">📋 Dados para Entrega</h3>
+          
+          <form id="customer-data-form" style="display: flex; flex-direction: column; gap: ${baseSize}px;">
+            <div>
+              <label style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.5}px;">Tipo de Entrega *</label>
+              <div style="display: flex; flex-direction: column; gap: ${baseSize * 0.4}px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: ${baseSize * 0.5}px; background: ${bgColor}; border-radius: 6px;">
+                  <input type="radio" name="delivery-type" value="delivery" id="delivery-type-delivery" required style="margin-right: ${baseSize * 0.5}px; cursor: pointer;" checked>
+                  <span style="font-size: ${baseSize * 0.9}px;">🏠 Entrega</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: ${baseSize * 0.5}px; background: ${bgColor}; border-radius: 6px;">
+                  <input type="radio" name="delivery-type" value="pickup" id="delivery-type-pickup" required style="margin-right: ${baseSize * 0.5}px; cursor: pointer;">
+                  <span style="font-size: ${baseSize * 0.9}px;">🏪 Retirar no Balcão</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="name-container">
+              <label for="customer-name" style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.3}px;">Nome *</label>
+              <input type="text" id="customer-name" required style="width: 100%; padding: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 8px; font-size: ${baseSize * 0.9}px; box-sizing: border-box;">
+            </div>
+
+            <div id="address-container">
+              <div>
+                <label for="customer-address" style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.3}px;">Endereço *</label>
+                <input type="text" id="customer-address" required style="width: 100%; padding: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 8px; font-size: ${baseSize * 0.9}px; box-sizing: border-box;">
+              </div>
+
+              <div>
+                <label for="customer-reference" style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.3}px;">Ponto de Referência</label>
+                <input type="text" id="customer-reference" style="width: 100%; padding: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 8px; font-size: ${baseSize * 0.9}px; box-sizing: border-box;">
+              </div>
+            </div>
+
+            <div>
+              <label style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.5}px;">Forma de Pagamento *</label>
+              <div style="display: flex; flex-direction: column; gap: ${baseSize * 0.4}px;">
+                <label style="display: flex; align-items: center; cursor: pointer; padding: ${baseSize * 0.5}px; background: ${bgColor}; border-radius: 6px;">
+                  <input type="radio" name="payment" value="Cartão" required style="margin-right: ${baseSize * 0.5}px; cursor: pointer;">
+                  <span style="font-size: ${baseSize * 0.9}px;">💳 Cartão</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: ${baseSize * 0.5}px; background: ${bgColor}; border-radius: 6px;">
+                  <input type="radio" name="payment" value="PIX" required style="margin-right: ${baseSize * 0.5}px; cursor: pointer;">
+                  <span style="font-size: ${baseSize * 0.9}px;">📱 PIX</span>
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; padding: ${baseSize * 0.5}px; background: ${bgColor}; border-radius: 6px;">
+                  <input type="radio" name="payment" value="Dinheiro" id="payment-cash" required style="margin-right: ${baseSize * 0.5}px; cursor: pointer;">
+                  <span style="font-size: ${baseSize * 0.9}px;">💵 Dinheiro</span>
+                </label>
+              </div>
+            </div>
+
+            <div id="change-container" style="display: none;">
+              <label for="customer-change" style="display: block; font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.3}px;">Precisa de troco para quanto?</label>
+              <input type="text" id="customer-change" placeholder="Ex: R$ 50,00" style="width: 100%; padding: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 8px; font-size: ${baseSize * 0.9}px; box-sizing: border-box;">
+            </div>
+
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button type="button" onclick="closeCustomerDataForm()" style="flex: 1; padding: ${baseSize * 0.8}px; background: transparent; color: ${textColor}; border: 1px solid ${textColor}; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Cancelar</button>
+              <button type="submit" style="flex: 1; padding: ${baseSize * 0.8}px; background: ${secondaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: ${baseSize * 0.9}px;">Enviar Pedido 📱</button>
+            </div>
+          </form>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+
+      const deliveryTypeRadios = document.querySelectorAll('input[name="delivery-type"]');
+      const addressContainer = document.getElementById('address-container');
+      const addressInput = document.getElementById('customer-address');
+      const nameInput = document.getElementById('customer-name');
+      
+      deliveryTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          if (e.target.value === 'pickup') {
+            addressContainer.style.display = 'none';
+            addressInput.removeAttribute('required');
+          } else {
+            addressContainer.style.display = 'block';
+            addressInput.setAttribute('required', 'required');
+          }
+        });
+      });
+
+      const paymentRadios = document.querySelectorAll('input[name="payment"]');
+      const changeContainer = document.getElementById('change-container');
+      paymentRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          if (e.target.value === 'Dinheiro') {
+            changeContainer.style.display = 'block';
+          } else {
+            changeContainer.style.display = 'none';
+          }
+        });
+      });
+
+      // Event listener para o formulário
+      const form = document.getElementById('customer-data-form');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+        const name = document.getElementById('customer-name').value.trim();
+        const address = document.getElementById('customer-address').value.trim();
+        const reference = document.getElementById('customer-reference').value.trim();
+        const payment = document.querySelector('input[name="payment"]:checked').value;
+        const change = document.getElementById('customer-change').value.trim();
+
+        if (!name) {
+          document.getElementById('customer-name').style.borderColor = '#ef4444';
+          return;
+        }
+
+        if (deliveryType === 'delivery' && !address) {
+          document.getElementById('customer-address').style.borderColor = '#ef4444';
+          return;
+        }
+        
+        completeWhatsAppOrder(deliveryType, name, address, reference, payment, change);
+      });
+    }
+
+    function closeCustomerDataForm() {
+      const overlay = document.getElementById('customer-data-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+
+    function completeWhatsAppOrder(deliveryType, name, address, reference, payment, change) {
+      let message = "*Novo Pedido*\n\n";
+      
+      message += "*ITENS DO PEDIDO:*\n";
+      cart.forEach((item, index) => {
+        message += `${index + 1}. *${item.name}* (${item.quantity}x)\n`;
+        
+        if (item.selectedOptions.meat) {
+          message += `   Carne: ${item.selectedOptions.meat}\n`;
+        }
+        
+        if (item.selectedOptions.espetinho) {
+          message += `   Espetinho: ${item.selectedOptions.espetinho}\n`;
+        }
+        
+        if (item.selectedOptions.ingredients) {
+          const additions = Object.entries(item.selectedOptions.ingredients)
+            .filter(([name, qty]) => qty > 0)
+            .map(([name, qty]) => `${name} (${qty}x)`)
+            .join(', ');
+          const removals = Object.entries(item.selectedOptions.ingredients)
+            .filter(([name, qty]) => qty === -1)
+            .map(([name, qty]) => name)
+            .join(', ');
+          
+          if (additions) {
+            message += `   ➕ Extras: ${additions}\n`;
+          }
+          if (removals) {
+            message += `   ➖ Remover: ${removals}\n`;
+          }
+        }
+        
+        if (item.selectedOptions.addons && item.selectedOptions.addons.length > 0) {
+          message += `   🍟 Adicionais: ${item.selectedOptions.addons.map(a => a.name).join(', ')}\n`;
+        }
+        
+        if (item.selectedOptions.obs) {
+          message += `   💬 Observação: ${item.selectedOptions.obs}\n`;
+        }
+        
+        message += `   💰 Subtotal: R$ ${item.totalPrice.toFixed(2)}\n\n`;
+      });
+
+      message += `*💵 Total: R$ ${getCartTotal().toFixed(2)}*\n\n`;
+      
+      message += "*DADOS PARA ENTREGA:*\n";
+      message += `👤 Nome: ${name}\n`;
+      if (deliveryType === 'pickup') {
+        message += `🏪 *Retirar no Balcão*\n`;
+      } else {
+        message += `🏠 *Entrega*\n`;
+        message += `📍 Endereço: ${address}\n`;
+        if (reference) {
+          message += `📍 Referência: ${reference}\n`;
+        }
+      }
+      message += `💳 Forma de Pagamento: ${payment}\n`;
+      if (payment === 'Dinheiro' && change) {
+        message += `💵 Troco para: ${change}\n`;
+      }
+
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+      
+      // Abrir WhatsApp diretamente
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      
+      // Limpar carrinho e fechar formulário
+      cart = [];
+      customizationState = {};
+      obsStorage = {};
+      closeCustomerDataForm();
+      updateUI();
+    }
+
+    window.sendToWhatsApp = sendToWhatsApp;
+    window.closeCustomerDataForm = closeCustomerDataForm;
+
+    function renderMenu() {
+      const baseSize = window.elementSdk?.config?.font_size || defaultConfig.font_size;
+      const customFont = window.elementSdk?.config?.font_family || defaultConfig.font_family;
+      const baseFontStack = 'system-ui, sans-serif';
+      const fontFamily = `${customFont}, ${baseFontStack}`;
+      
+      const bgColor = window.elementSdk?.config?.background_color || defaultConfig.background_color;
+      const surfaceColor = window.elementSdk?.config?.surface_color || defaultConfig.surface_color;
+      const textColor = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+      const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+      const secondaryColor = window.elementSdk?.config?.secondary_action_color || defaultConfig.secondary_action_color;
+
+      document.documentElement.style.setProperty('--primary-color', primaryColor);
+      document.documentElement.style.setProperty('--text-color', textColor);
+
+      let html = `
+        <div style="background: ${bgColor}; color: ${textColor}; font-family: ${fontFamily}; min-height: 100%;">
+          <button class="cart-float-button" onclick="toggleMobileCart()" id="mobile-cart-btn">
+            🛒
+            <span id="mobile-cart-badge" style="position: absolute; top: -5px; right: -5px; background: ${textColor}; color: ${primaryColor}; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;">0</span>
+          </button>
+
+          <div class="cart-modal-overlay" id="cart-overlay" onclick="closeMobileCart()"></div>
+
+          <div style="background: ${surfaceColor}; padding: ${baseSize * 1.5}px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3);">
+            <h1 id="restaurant-name" style="font-size: ${baseSize * 2}px; font-weight: 700; margin: 0 0 ${baseSize * 0.5}px 0;">${window.elementSdk?.config?.restaurant_name || defaultConfig.restaurant_name}</h1>
+            <p id="restaurant-subtitle" style="font-size: ${baseSize * 1}px; margin: 0; opacity: 0.8;">${window.elementSdk?.config?.restaurant_subtitle || defaultConfig.restaurant_subtitle}</p>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; max-width: 1400px; margin: 0 auto;">
+            <div style="flex: 1; min-width: 300px; padding: ${baseSize * 1.5}px;">
+      `;
+
+      // Lanches Tradicionais
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.lanches.title}</h2>
+        <div style="display: grid; gap: ${baseSize}px;">`;
+      
+      menuData.lanches.items.forEach(item => {
+        const itemId = `lanche-${item.name.replace(/\s/g, '-')}`;
+        html += `
+          <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize * 0.3}px;">
+              <h3 style="font-size: ${baseSize * 1.1}px; font-weight: 600; margin: 0;">${item.name}</h3>
+              <span id="price-${itemId}" style="font-size: ${baseSize * 1.1}px; font-weight: 700; color: ${primaryColor};">R$ ${item.price.toFixed(2)}</span>
+            </div>
+            ${item.description ? `<p style="font-size: ${baseSize * 0.8}px; margin: 0 0 ${baseSize * 0.5}px 0; opacity: 0.7; line-height: 1.4;">${item.description}</p>` : ''}
+            
+            ${item.needsMeat ? `
+              <select id="meat-${itemId}" onchange="updateMeatPrice('${itemId}')" style="width: 100%; padding: ${baseSize * 0.5}px; margin: ${baseSize * 0.5}px 0; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+                <option value="">Escolha a carne</option>
+                ${menuData.lanches.meatOptions.map(meat => `<option value="${meat.name}" data-price="${meat.price}">${meat.name}${meat.price > 0 ? ` (+R$ ${meat.price.toFixed(2)})` : ''}</option>`).join('')}
+              </select>
+            ` : ''}
+            
+            <details style="margin: ${baseSize * 0.5}px 0; background: ${bgColor}; padding: ${baseSize * 0.5}px; border-radius: 6px;" onToggle="updateCustomizationDisplay('${itemId}')">
+              <summary style="cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 600; color: ${secondaryColor};">✏️ Personalizar ingredientes</summary>
+              <div style="margin-top: ${baseSize * 0.5}px; padding-top: ${baseSize * 0.5}px;">
+                ${menuData.lanches.customizableIngredients.map(ingredient => {
+                  const isIncluded = item.includes && item.includes.includes(ingredient.name);
+                  return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin: ${baseSize * 0.4}px 0; padding: ${baseSize * 0.4}px; background: ${surfaceColor}; border-radius: 6px;">
+                    <span style="font-size: ${baseSize * 0.85}px; flex: 1;">${ingredient.name} <span style="color: ' + primaryColor + '; font-weight: 600;">R$ ${ingredient.price.toFixed(2)}</span></span>
+                    <div style="display: flex; align-items: center; gap: ${baseSize * 0.3}px;">
+                      <button id="remove-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="removeIngredient('${itemId}', '${ingredient.name}')" style="background: #dc2626; color: ${textColor}; border: none; padding: ${baseSize * 0.3}px ${baseSize * 0.6}px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: ${baseSize * 0.75}px; white-space: nowrap; display: ${isIncluded ? 'block' : 'none'};">Remover</button>
+                      <button id="minus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', -1)" style="background: ${primaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center; opacity: 0.3;">−</button>
+                      <span id="qty-${itemId}-${ingredient.name.replace(/\s/g, '')}" style="font-size: ${baseSize * 0.9}px; min-width: ${baseSize * 1.5}px; text-align: center;">0</span>
+                      <button id="plus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', 1)" style="background: ${secondaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center;">+</button>
+                    </div>
+                  </div>
+                `}).join('')}
+              </div>
+            </details>
+            
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button id="obs-btn-${itemId}" onclick="openObsModal('${itemId}')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+              <button onclick="handleAddLanche('${itemId}', ${item.needsMeat})" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+
+      // Burgers Gourmet
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.burgers.title}</h2>
+        <div style="display: grid; gap: ${baseSize}px;">`;
+      
+      menuData.burgers.items.forEach(item => {
+        const itemId = `burger-${item.name.replace(/\s/g, '-')}`;
+        html += `
+          <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize * 0.3}px;">
+              <h3 style="font-size: ${baseSize * 1.1}px; font-weight: 600; margin: 0;">${item.name}</h3>
+              <span id="price-${itemId}" style="font-size: ${baseSize * 1.1}px; font-weight: 700; color: ${primaryColor};">R$ ${item.price.toFixed(2)}</span>
+            </div>
+            ${item.description ? `<p style="font-size: ${baseSize * 0.8}px; margin: 0 0 ${baseSize * 0.5}px 0; opacity: 0.7; line-height: 1.4;">${item.description}</p>` : ''}
+            
+            <details style="margin: ${baseSize * 0.5}px 0; background: ${bgColor}; padding: ${baseSize * 0.5}px; border-radius: 6px;" onToggle="updateCustomizationDisplay('${itemId}')">
+              <summary style="cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 600; color: ${secondaryColor};">✏️ Personalizar ingredientes</summary>
+              <div style="margin-top: ${baseSize * 0.5}px; padding-top: ${baseSize * 0.5}px;">
+                ${menuData.burgers.customizableIngredients.map(ingredient => {
+                  const isIncluded = item.includes && item.includes.includes(ingredient.name);
+                  return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin: ${baseSize * 0.4}px 0; padding: ${baseSize * 0.4}px; background: ${surfaceColor}; border-radius: 6px;">
+                    <span style="font-size: ${baseSize * 0.85}px; flex: 1;">${ingredient.name} <span style="color: ' + primaryColor + '; font-weight: 600;">R$ ${ingredient.price.toFixed(2)}</span></span>
+                    <div style="display: flex; align-items: center; gap: ${baseSize * 0.3}px;">
+                      <button id="remove-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="removeIngredient('${itemId}', '${ingredient.name}')" style="background: #dc2626; color: ${textColor}; border: none; padding: ${baseSize * 0.3}px ${baseSize * 0.6}px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: ${baseSize * 0.75}px; white-space: nowrap; display: ${isIncluded ? 'block' : 'none'};">Remover</button>
+                      <button id="minus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', -1)" style="background: ${primaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center; opacity: 0.3;">−</button>
+                      <span id="qty-${itemId}-${ingredient.name.replace(/\s/g, '')}" style="font-size: ${baseSize * 0.9}px; min-width: ${baseSize * 1.5}px; text-align: center;">0</span>
+                      <button id="plus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', 1)" style="background: ${secondaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center;">+</button>
+                    </div>
+                  </div>
+                `}).join('')}
+              </div>
+            </details>
+            
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button id="obs-btn-${itemId}" onclick="openObsModal('${itemId}')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+              <button onclick="handleAddBurger('${itemId}')" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+
+      // Batatas
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.batatas.title}</h2>
+        <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+          <select id="batata-size-select" style="width: 100%; padding: ${baseSize * 0.6}px; margin-bottom: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+            <option value="">Escolha o tamanho</option>
+            ${menuData.batatas.items.map(item => `<option value="${item.name}" data-price="${item.price}">${item.name} - R$ ${item.price.toFixed(2)}</option>`).join('')}
+          </select>
+          
+          <div style="margin: ${baseSize * 0.7}px 0;">
+            <p style="font-size: ${baseSize * 0.9}px; font-weight: 600; margin-bottom: ${baseSize * 0.4}px;">Adicionais:</p>
+            ${menuData.batatas.addons.map(addon => `
+              <label style="display: flex; align-items: center; margin: ${baseSize * 0.3}px 0; cursor: pointer; font-size: ${baseSize * 0.9}px; padding: ${baseSize * 0.4}px; background: ${bgColor}; border-radius: 6px;">
+                <input type="checkbox" class="addon-batata-unified" value="${addon.name}" data-price="${addon.price}" style="margin-right: ${baseSize * 0.5}px; cursor: pointer;">
+                ${addon.name} (+R$ ${addon.price.toFixed(2)})
+              </label>
+            `).join('')}
+          </div>
+          
+          <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.7}px;">
+            <button id="obs-btn-batata" onclick="openObsModal('batata')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+            <button onclick="handleAddBatataUnified()" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+          </div>
+        </div>
+      </div>`;
+
+      // Jantinha
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.jantinha.title}</h2>
+        <div style="display: grid; gap: ${baseSize}px;">`;
+      
+      menuData.jantinha.items.forEach(item => {
+        const itemId = `jantinha-${item.name.replace(/\s/g, '-')}`;
+        html += `
+          <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize * 0.3}px;">
+              <h3 style="font-size: ${baseSize * 1.1}px; font-weight: 600; margin: 0;">${item.name}</h3>
+              <span id="price-${itemId}" style="font-size: ${baseSize * 1.1}px; font-weight: 700; color: ${primaryColor};">R$ ${item.price.toFixed(2)}</span>
+            </div>
+            ${item.description ? `<p style="font-size: ${baseSize * 0.8}px; margin: 0 0 ${baseSize * 0.5}px 0; opacity: 0.7; line-height: 1.4;">${item.description}</p>` : ''}
+            
+            <select id="espetinho-${itemId}" onchange="updateJantinhaPrice('${itemId}')" style="width: 100%; padding: ${baseSize * 0.5}px; margin: ${baseSize * 0.5}px 0; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+              <option value="">Escolha o espetinho</option>
+              ${menuData.jantinha.espetinhoOptions.map(esp => `<option value="${esp.name}" data-price="${esp.price}">${esp.name}${esp.price > 0 ? ` (+R$ ${esp.price.toFixed(2)})` : ''}</option>`).join('')}
+            </select>
+            
+            <details style="margin: ${baseSize * 0.5}px 0; background: ${bgColor}; padding: ${baseSize * 0.5}px; border-radius: 6px;" onToggle="updateCustomizationDisplay('${itemId}')">
+              <summary style="cursor: pointer; font-size: ${baseSize * 0.9}px; font-weight: 600; color: ${secondaryColor};">✏️ Personalizar ingredientes</summary>
+              <div style="margin-top: ${baseSize * 0.5}px; padding-top: ${baseSize * 0.5}px;">
+                ${menuData.jantinha.customizableIngredients.map(ingredient => {
+                  const isIncluded = item.includes && item.includes.includes(ingredient.name);
+                  return `
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin: ${baseSize * 0.4}px 0; padding: ${baseSize * 0.4}px; background: ${surfaceColor}; border-radius: 6px;">
+                    <span style="font-size: ${baseSize * 0.85}px; flex: 1;">${ingredient.name} <span style="color: ${primaryColor}; font-weight: 600;">R$ ${ingredient.price.toFixed(2)}</span></span>
+                    <div style="display: flex; align-items: center; gap: ${baseSize * 0.3}px;">
+                      <button id="remove-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="removeIngredient('${itemId}', '${ingredient.name}')" style="background: #dc2626; color: ${textColor}; border: none; padding: ${baseSize * 0.3}px ${baseSize * 0.6}px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: ${baseSize * 0.75}px; white-space: nowrap; display: ${isIncluded ? 'block' : 'none'};">Remover</button>
+                      <button id="minus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', -1)" style="background: ${primaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center; opacity: 0.3;">−</button>
+                      <span id="qty-${itemId}-${ingredient.name.replace(/\s/g, '')}" style="font-size: ${baseSize * 0.9}px; min-width: ${baseSize * 1.5}px; text-align: center;">0</span>
+                      <button id="plus-${itemId}-${ingredient.name.replace(/\s/g, '')}" onclick="updateIngredientQuantity('${itemId}', '${ingredient.name}', 1)" style="background: ${secondaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.8}px; height: ${baseSize * 1.8}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize}px; display: flex; align-items: center; justify-content: center;">+</button>
+                    </div>
+                  </div>
+                `}).join('')}
+              </div>
+            </details>
+            
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button id="obs-btn-${itemId}" onclick="openObsModal('${itemId}')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+              <button onclick="handleAddJantinha('${itemId}')" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+
+      // Bebidas
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.bebidas.title}</h2>
+        <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+          <select id="bebida-select" style="width: 100%; padding: ${baseSize * 0.6}px; margin-bottom: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+            <option value="">Escolha uma bebida</option>
+            ${menuData.bebidas.categories.map(category => `
+              <optgroup label="${category.name}">
+                ${category.items.map(item => `<option value="${item.name}" data-price="${item.price}">${item.name} - R$ ${item.price.toFixed(2)}</option>`).join('')}
+              </optgroup>
+            `).join('')}
+          </select>
+          <button onclick="handleAddBebidaFromSelect()" style="width: 100%; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+        </div>
+      </div>`;
+
+      // Sucos
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">🥤 Sucos (copo 500 ml)</h2>
+        <div style="display: grid; gap: ${baseSize}px;">`;
+      
+      menuData.sucos.items.forEach(item => {
+        html += `
+          <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize * 0.5}px;">
+              <h3 style="font-size: ${baseSize * 1.1}px; font-weight: 600; margin: 0;">Suco</h3>
+              <span style="font-size: ${baseSize * 1.1}px; font-weight: 700; color: ${primaryColor};">R$ ${item.price.toFixed(2)}</span>
+            </div>
+            <select id="flavor-suco" style="width: 100%; padding: ${baseSize * 0.5}px; margin: ${baseSize * 0.5}px 0; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+              <option value="">Escolha o sabor</option>
+              ${menuData.sucos.flavors.map(flavor => `<option value="${flavor}">${flavor}</option>`).join('')}
+            </select>
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button id="obs-btn-suco" onclick="openObsModal('suco')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+              <button onclick="handleAddSuco(${item.price})" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+
+      // Cremes
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">${menuData.cremes.title}</h2>
+        <div style="display: grid; gap: ${baseSize}px;">`;
+      
+      menuData.cremes.items.forEach(item => {
+        html += `
+          <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize * 0.5}px;">
+              <h3 style="font-size: ${baseSize * 1.1}px; font-weight: 600; margin: 0;">Creme</h3>
+              <span style="font-size: ${baseSize * 1.1}px; font-weight: 700; color: ${primaryColor};">R$ ${item.price.toFixed(2)}</span>
+            </div>
+            <select id="flavor-creme" style="width: 100%; padding: ${baseSize * 0.5}px; margin: ${baseSize * 0.5}px 0; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+              <option value="">Escolha o sabor</option>
+              ${menuData.cremes.flavors.map(flavor => `<option value="${flavor}">${flavor}</option>`).join('')}
+            </select>
+            <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.5}px;">
+              <button id="obs-btn-creme" onclick="openObsModal('creme')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+              <button onclick="handleAddCreme(${item.price})" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar</button>
+            </div>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+
+      // Caldo de Frango
+      html += `<div style="margin-bottom: ${baseSize * 2}px;">
+        <h2 style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin-bottom: ${baseSize}px; color: ${primaryColor};">🍲 Caldo de Frango</h2>
+        <div style="background: ${surfaceColor}; padding: ${baseSize}px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+          <p style="font-size: ${baseSize * 0.85}px; margin-bottom: ${baseSize * 0.7}px; opacity: 0.8;">Acompanha: torrada + cheiro-verde</p>
+          <select id="caldo-select" style="width: 100%; padding: ${baseSize * 0.6}px; margin-bottom: ${baseSize * 0.7}px; background: ${bgColor}; color: ${textColor}; border: 1px solid ${primaryColor}; border-radius: 6px; font-size: ${baseSize * 0.9}px;">
+            <option value="">Escolha o tamanho</option>
+            <option value="300ml" data-price="0">300ml - R$ 0.00</option>
+            <option value="500ml" data-price="0">500ml - R$ 0.00</option>
+          </select>
+          <div style="display: flex; gap: ${baseSize * 0.5}px; margin-top: ${baseSize * 0.7}px;">
+            <button id="obs-btn-caldo" onclick="openObsModal('caldo')" style="padding: ${baseSize * 0.5}px ${baseSize * 0.7}px; background: rgba(255,255,255,0.1); color: ${textColor}; border: none; border-radius: 6px; cursor: pointer; font-size: ${baseSize * 0.85}px;">💬</button>
+            <button onclick="handleAddCaldoFromSelect()" style="flex: 1; padding: ${baseSize * 0.7}px; background: ${primaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: ${baseSize * 0.9}px;">Adicionar ao Carrinho</button>
+          </div>
+        </div>
+      </div>`;
+
+      html += `</div>`;
+
+      // Cart Section
+      html += `
+        <div class="cart-sidebar" style="width: 350px; background: ${surfaceColor}; padding: ${baseSize * 1.5}px; position: sticky; top: 0; height: fit-content; max-height: 100vh; overflow-y: auto;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${baseSize}px;">
+            <h2 id="cart-title" style="font-size: ${baseSize * 1.5}px; font-weight: 700; margin: 0;">${window.elementSdk?.config?.cart_title || defaultConfig.cart_title}</h2>
+            <div style="display: flex; align-items: center; gap: ${baseSize * 0.5}px;">
+              <span id="cart-count" style="background: ${primaryColor}; color: ${textColor}; padding: ${baseSize * 0.3}px ${baseSize * 0.6}px; border-radius: 20px; font-weight: 700; font-size: ${baseSize * 0.9}px;">0</span>
+              <button onclick="closeMobileCart()" id="close-cart-btn" style="display: none; background: transparent; border: none; color: ${textColor}; font-size: ${baseSize * 1.5}px; cursor: pointer; padding: 0;">✕</button>
+            </div>
+          </div>
+          <div id="cart-items" style="margin-bottom: ${baseSize}px;"></div>
+          <div id="cart-total" style="border-top: 2px solid ${primaryColor}; padding-top: ${baseSize}px; margin-top: ${baseSize}px;"></div>
+          <button id="send-whatsapp" onclick="sendToWhatsApp()" style="width: 100%; padding: ${baseSize}px; background: ${secondaryColor}; color: ${textColor}; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: ${baseSize}px; margin-top: ${baseSize}px; display: none;">
+            ${window.elementSdk?.config?.send_order_button || defaultConfig.send_order_button}
+          </button>
+        </div>
+      </div>
+    </div>
+      `;
+
+      return html;
+    }
+
+    function updateCartDisplay() {
+      const baseSize = window.elementSdk?.config?.font_size || defaultConfig.font_size;
+      const textColor = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+      const surfaceColor = window.elementSdk?.config?.surface_color || defaultConfig.surface_color;
+      const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+      const secondaryColor = window.elementSdk?.config?.secondary_action_color || defaultConfig.secondary_action_color;
+
+      const cartCount = document.getElementById('cart-count');
+      const cartItems = document.getElementById('cart-items');
+      const cartTotal = document.getElementById('cart-total');
+      const sendButton = document.getElementById('send-whatsapp');
+      const mobileBadge = document.getElementById('mobile-cart-badge');
+
+      const itemCount = cart.length;
+      cartCount.textContent = itemCount;
+      if (mobileBadge) mobileBadge.textContent = itemCount;
+      
+      cartCount.classList.add('cart-badge');
+      setTimeout(() => cartCount.classList.remove('cart-badge'), 300);
+
+      if (cart.length === 0) {
+        cartItems.innerHTML = `<p id="cart-empty-msg" style="text-align: center; opacity: 0.6; font-size: ${baseSize * 0.9}px;">${window.elementSdk?.config?.cart_empty_message || defaultConfig.cart_empty_message}</p>`;
+        cartTotal.innerHTML = '';
+        sendButton.style.display = 'none';
+        return;
+      }
+
+      let itemsHtml = '';
+      cart.forEach(item => {
+        itemsHtml += `
+          <div class="item-enter" style="background: ${surfaceColor}; padding: ${baseSize}px; margin-bottom: ${baseSize * 0.8}px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: ${baseSize * 0.5}px;">
+              <div style="flex: 1;">
+                <h4 style="font-size: ${baseSize}px; font-weight: 600; margin: 0 0 ${baseSize * 0.3}px 0;">${item.name}</h4>
+                ${item.selectedOptions.meat ? `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7;">🍖 ${item.selectedOptions.meat}</p>` : ''}
+                ${item.selectedOptions.espetinho ? `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7;">🍢 ${item.selectedOptions.espetinho}</p>` : ''}
+                ${item.selectedOptions.ingredients ? 
+                  Object.entries(item.selectedOptions.ingredients)
+                    .filter(([name, qty]) => qty !== 0)
+                    .map(([name, qty]) => {
+                      if (qty === -1) {
+                        return `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7; color: ${primaryColor};">❌ Sem ${name}</p>`;
+                      } else {
+                        return `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7; color: ${secondaryColor};">➕ ${name} (${qty}x)</p>`;
+                      }
+                    })
+                    .join('') : ''}
+                ${item.selectedOptions.addons && item.selectedOptions.addons.length > 0 ? 
+                  `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7;">🍟 ${item.selectedOptions.addons.map(a => a.name).join(', ')}</p>` : ''}
+                ${item.selectedOptions.obs ? `<p style="font-size: ${baseSize * 0.8}px; margin: ${baseSize * 0.2}px 0; opacity: 0.7; font-style: italic;">💬 ${item.selectedOptions.obs}</p>` : ''}
+              </div>
+              <button onclick="removeFromCart(${item.id})" style="background: transparent; border: none; color: ${primaryColor}; cursor: pointer; font-size: ${baseSize * 1.2}px; padding: 0 ${baseSize * 0.5}px; margin-left: ${baseSize * 0.5}px;">×</button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: ${baseSize * 0.5}px; background: ${primaryColor}20; padding: ${baseSize * 0.3}px ${baseSize * 0.5}px; border-radius: 6px;">
+                <button onclick="decreaseQuantity(${item.id})" style="background: ${primaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.5}px; height: ${baseSize * 1.5}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize * 0.9}px; display: flex; align-items: center; justify-content: center;">−</button>
+                <span style="font-weight: 600; font-size: ${baseSize * 0.9}px; min-width: ${baseSize * 1.5}px; text-align: center;">${item.quantity}</span>
+                <button onclick="increaseQuantity(${item.id})" style="background: ${primaryColor}; color: ${textColor}; border: none; width: ${baseSize * 1.5}px; height: ${baseSize * 1.5}px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: ${baseSize * 0.9}px; display: flex; align-items: center; justify-content: center;">+</button>
+              </div>
+              <div style="font-weight: 700; color: ${primaryColor}; font-size: ${baseSize * 0.95}px;">R$ ${item.totalPrice.toFixed(2)}</div>
+            </div>
+          </div>
+        `;
+      });
+      cartItems.innerHTML = itemsHtml;
+
+      cartTotal.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: ${baseSize * 1.2}px; font-weight: 700;">Total:</span>
+          <span style="font-size: ${baseSize * 1.5}px; font-weight: 700; color: ${primaryColor};">R$ ${getCartTotal().toFixed(2)}</span>
+        </div>
+      `;
+
+      sendButton.style.display = 'block';
+      
+      const closeBtn = document.getElementById('close-cart-btn');
+      if (closeBtn && window.innerWidth <= 768) {
+        closeBtn.style.display = 'block';
+      }
+    }
+
+    window.toggleMobileCart = function() {
+      const cartSidebar = document.querySelector('.cart-sidebar');
+      const overlay = document.getElementById('cart-overlay');
+      if (cartSidebar && overlay) {
+        cartSidebar.classList.add('mobile-active');
+        overlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    };
+
+    window.closeMobileCart = function() {
+      const cartSidebar = document.querySelector('.cart-sidebar');
+      const overlay = document.getElementById('cart-overlay');
+      if (cartSidebar && overlay) {
+        cartSidebar.classList.remove('mobile-active');
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+    };
+
+    function updateUI() {
+      document.getElementById('app').innerHTML = renderMenu();
+      updateCartDisplay();
+    }
+
+    window.handleAddLanche = function(itemId, needsMeat) {
+      const itemName = itemId.replace('lanche-', '').replace(/-/g, ' ');
+      const item = menuData.lanches.items.find(i => i.name.replace(/\s/g, '-') === itemName.replace(/\s/g, '-'));
+      
+      if (!item) return;
+      
+      const options = { category: 'lanches' };
+      
+      if (needsMeat) {
+        const meatSelect = document.getElementById(`meat-${itemId}`);
+        if (!meatSelect.value) {
+          const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+          meatSelect.style.border = `2px solid ${primaryColor}`;
+          setTimeout(() => meatSelect.style.border = `1px solid ${primaryColor}`, 500);
+          return;
+        }
+        const selectedMeat = menuData.lanches.meatOptions.find(m => m.name === meatSelect.value);
+        options.meat = selectedMeat.name;
+        options.meatPrice = selectedMeat.price;
+      }
+      
+      const state = customizationState[itemId] || {};
+      if (Object.keys(state).length > 0) {
+        options.ingredients = { ...state };
+      }
+      
+      if (obsStorage[itemId]) {
+        options.obs = obsStorage[itemId];
+      }
+      
+      addToCart(item, 'lanches', options);
+      
+      customizationState[itemId] = {};
+      obsStorage[itemId] = '';
+      updateUI();
+    };
+
+    window.handleAddBurger = function(itemId) {
+      const itemName = itemId.replace('burger-', '').replace(/-/g, ' ');
+      const item = menuData.burgers.items.find(i => i.name.replace(/\s/g, '-') === itemName.replace(/\s/g, '-'));
+      
+      if (!item) return;
+      
+      const options = { category: 'burgers' };
+      const state = customizationState[itemId] || {};
+      
+      if (Object.keys(state).length > 0) {
+        options.ingredients = { ...state };
+      }
+      
+      if (obsStorage[itemId]) {
+        options.obs = obsStorage[itemId];
+      }
+      
+      addToCart(item, 'burgers', options);
+      
+      customizationState[itemId] = {};
+      obsStorage[itemId] = '';
+      updateUI();
+    };
+
+    window.handleAddBatataUnified = function() {
+      const sizeSelect = document.getElementById('batata-size-select');
+      if (!sizeSelect.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        sizeSelect.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => sizeSelect.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      
+      const name = sizeSelect.value;
+      const price = parseFloat(sizeSelect.options[sizeSelect.selectedIndex].dataset.price);
+      
+      const checkboxes = document.querySelectorAll('.addon-batata-unified');
+      const addons = [];
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          addons.push({ name: cb.value, price: parseFloat(cb.dataset.price) });
+        }
+      });
+      
+      const options = { addons };
+      
+      if (obsStorage['batata']) {
+        options.obs = obsStorage['batata'];
+      }
+      
+      addToCart({ name, price }, 'batatas', options);
+      
+      sizeSelect.value = '';
+      checkboxes.forEach(cb => cb.checked = false);
+      obsStorage['batata'] = '';
+    };
+
+    window.updateJantinhaPrice = function(itemId) {
+      updateItemPriceDisplay(itemId);
+    };
+
+    window.handleAddJantinha = function(itemId) {
+      const itemName = itemId.replace('jantinha-', '').replace(/-/g, ' ');
+      const item = menuData.jantinha.items.find(i => i.name.replace(/\s/g, '-') === itemName.replace(/\s/g, '-'));
+      
+      if (!item) return;
+      
+      const options = { category: 'jantinha' };
+      
+      const espetinhoSelect = document.getElementById(`espetinho-${itemId}`);
+      if (!espetinhoSelect.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        espetinhoSelect.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => espetinhoSelect.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      const selectedEspetinho = menuData.jantinha.espetinhoOptions.find(e => e.name === espetinhoSelect.value);
+      options.espetinho = selectedEspetinho.name;
+      options.espetinhoPrice = selectedEspetinho.price;
+      
+      const state = customizationState[itemId] || {};
+      if (Object.keys(state).length > 0) {
+        options.ingredients = { ...state };
+      }
+      
+      if (obsStorage[itemId]) {
+        options.obs = obsStorage[itemId];
+      }
+      
+      addToCart(item, 'jantinha', options);
+      
+      customizationState[itemId] = {};
+      obsStorage[itemId] = '';
+      updateUI();
+    };
+
+    window.handleAddBebida = function(name, price) {
+      addToCart({ name, price }, 'bebidas', {});
+    };
+
+    window.handleAddBebidaFromSelect = function() {
+      const select = document.getElementById('bebida-select');
+      if (!select.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        select.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => select.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      const name = select.value;
+      const price = parseFloat(select.options[select.selectedIndex].dataset.price);
+      addToCart({ name, price }, 'bebidas', {});
+      select.value = '';
+    };
+
+    window.handleAddSuco = function(price) {
+      const flavorSelect = document.getElementById('flavor-suco');
+      if (!flavorSelect.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        flavorSelect.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => flavorSelect.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      const name = `Suco de ${flavorSelect.value}`;
+      
+      const options = {};
+      if (obsStorage['suco']) {
+        options.obs = obsStorage['suco'];
+      }
+      
+      addToCart({ name, price }, 'sucos', options);
+      
+      flavorSelect.value = '';
+      obsStorage['suco'] = '';
+    };
+
+    window.handleAddCreme = function(price) {
+      const flavorSelect = document.getElementById('flavor-creme');
+      if (!flavorSelect.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        flavorSelect.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => flavorSelect.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      const name = `Creme de ${flavorSelect.value}`;
+      
+      const options = {};
+      if (obsStorage['creme']) {
+        options.obs = obsStorage['creme'];
+      }
+      
+      addToCart({ name, price }, 'cremes', options);
+      
+      flavorSelect.value = '';
+      obsStorage['creme'] = '';
+    };
+
+    window.handleAddCaldoFromSelect = function() {
+      const select = document.getElementById('caldo-select');
+      if (!select.value) {
+        const primaryColor = window.elementSdk?.config?.primary_action_color || defaultConfig.primary_action_color;
+        select.style.border = `2px solid ${primaryColor}`;
+        setTimeout(() => select.style.border = `1px solid ${primaryColor}`, 500);
+        return;
+      }
+      const size = select.value;
+      const price = parseFloat(select.options[select.selectedIndex].dataset.price);
+      const name = `Caldo de Frango ${size}`;
+      
+      const options = {};
+      if (obsStorage['caldo']) {
+        options.obs = obsStorage['caldo'];
+      }
+      
+      addToCart({ name, price }, 'caldo', options);
+      
+      select.value = '';
+      obsStorage['caldo'] = '';
+    };
+
+    window.updateIngredientQuantity = updateIngredientQuantity;
+    window.updateItemPriceDisplay = updateItemPriceDisplay;
+    window.removeIngredient = removeIngredient;
+    window.updateMeatPrice = updateMeatPrice;
+    window.removeFromCart = removeFromCart;
+    window.increaseQuantity = increaseQuantity;
+    window.decreaseQuantity = decreaseQuantity;
+
+    async function onConfigChange(config) {
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseFontStack = 'system-ui, sans-serif';
+      const fontFamily = `${customFont}, ${baseFontStack}`;
+      
+      const bgColor = config.background_color || defaultConfig.background_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+
+      document.body.style.fontFamily = fontFamily;
+      document.body.style.fontSize = `${baseSize}px`;
+      document.body.style.background = bgColor;
+      document.body.style.color = textColor;
+
+      const restaurantName = document.getElementById('restaurant-name');
+      const restaurantSubtitle = document.getElementById('restaurant-subtitle');
+      const cartTitle = document.getElementById('cart-title');
+      const cartEmptyMsg = document.getElementById('cart-empty-msg');
+      const sendButton = document.getElementById('send-whatsapp');
+
+      if (restaurantName) restaurantName.textContent = config.restaurant_name || defaultConfig.restaurant_name;
+      if (restaurantSubtitle) restaurantSubtitle.textContent = config.restaurant_subtitle || defaultConfig.restaurant_subtitle;
+      if (cartTitle) cartTitle.textContent = config.cart_title || defaultConfig.cart_title;
+      if (cartEmptyMsg) cartEmptyMsg.textContent = config.cart_empty_message || defaultConfig.cart_empty_message;
+      if (sendButton) sendButton.textContent = config.send_order_button || defaultConfig.send_order_button;
+
+      updateUI();
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (value) => {
+                config.surface_color = value;
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.primary_action_color || defaultConfig.primary_action_color,
+              set: (value) => {
+                config.primary_action_color = value;
+                window.elementSdk.setConfig({ primary_action_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+              set: (value) => {
+                config.secondary_action_color = value;
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["restaurant_name", config.restaurant_name || defaultConfig.restaurant_name],
+          ["restaurant_subtitle", config.restaurant_subtitle || defaultConfig.restaurant_subtitle],
+          ["cart_title", config.cart_title || defaultConfig.cart_title],
+          ["cart_empty_message", config.cart_empty_message || defaultConfig.cart_empty_message],
+          ["send_order_button", config.send_order_button || defaultConfig.send_order_button]
+        ])
+      });
+    }
+
+    updateUI();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9c777ce67336887b',t:'MTc3MDAxMjIzMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+ 
+ </body>
+</html>
