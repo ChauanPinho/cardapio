@@ -1,0 +1,1262 @@
+<!doctype html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expresso Lanches - Cardápio Online</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; }
+
+    .font-logo { font-family: 'Fredoka', sans-serif; }
+    .font-body { font-family: 'Nunito', sans-serif; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+    .float-animation { animation: float 3s ease-in-out infinite; }
+
+    .gradient-bg {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .card-gradient {
+      background: linear-gradient(145deg, #242442 0%, #1a1a2e 100%);
+    }
+
+    select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fb923c' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2.5rem;
+    }
+
+    .stepper-button {
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .stepper-button:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+
+    .item-description {
+      white-space: pre-line;
+      word-wrap: break-word;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+  
+ </head>
+ <body class="font-body">
+  <div class="min-h-screen w-full gradient-bg overflow-auto">
+   <!-- Modal de Notas Simples -->
+   <div id="simpleNotesModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="card-gradient rounded-3xl border border-orange-500/20 shadow-2xl w-full max-w-md">
+     <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-4 flex justify-between items-center rounded-t-3xl">
+      <h3 class="font-logo text-2xl font-bold text-white">Observações</h3><button type="button" onclick="closeSimpleNotesModal()" class="text-white hover:text-orange-100 text-2xl transition-all hover:scale-110">✕</button>
+     </div>
+     <div class="p-6 space-y-4">
+      <textarea id="simpleNotesInput" placeholder="Adicione suas observações..." class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm resize-none" rows="4"></textarea>
+     </div>
+     <div class="flex gap-2 p-4 border-t border-white/10 bg-gradient-to-t from-black/20 to-transparent rounded-b-3xl"><button type="button" onclick="saveSimpleNotes()" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm shadow-lg hover:shadow-green-500/50"> ✓ Salvar </button> <button type="button" onclick="closeSimpleNotesModal()" class="flex-1 bg-gray-700/50 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm border border-gray-600/50"> ✕ Cancelar </button>
+     </div>
+    </div>
+   </div><!-- Modal de Entrega -->
+   <div id="deliveryModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="card-gradient rounded-3xl border border-orange-500/20 shadow-2xl w-full max-w-2xl max-h-96 overflow-y-auto">
+     <!-- Header -->
+     <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-4 flex justify-between items-center rounded-t-3xl sticky top-0 z-10">
+      <div>
+       <h3 class="font-logo text-2xl font-bold text-white">Finalizar Pedido</h3>
+       <p class="text-orange-100 text-xs">Preencha os dados para entrega</p>
+      </div><button type="button" onclick="closeDeliveryForm()" class="text-white hover:text-orange-100 text-2xl transition-all hover:scale-110">✕</button>
+     </div><!-- Conteúdo do Formulário -->
+     <div class="p-6 space-y-4">
+      <!-- Tipo de Entrega -->
+      <div>
+       <h4 class="font-logo text-sm font-bold text-orange-300 mb-3">🚚 Tipo de Entrega</h4>
+       <div class="space-y-2"><label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="deliveryType" value="entrega" class="w-4 h-4 cursor-pointer accent-orange-500" checked onchange="toggleDeliveryFields()"> <span class="text-white font-medium">Entregar em casa (+R$ 3,00)</span> </label> <label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="deliveryType" value="balcao" class="w-4 h-4 cursor-pointer accent-orange-500" onchange="toggleDeliveryFields()"> <span class="text-white font-medium">Retirar no balcão</span> </label>
+       </div>
+      </div><!-- Campos de Entrega -->
+      <div id="deliveryFields" class="border-t border-white/10 pt-4 space-y-3">
+       <div><label class="block text-white font-medium text-sm mb-2">👤 Nome Completo</label> <input type="text" id="deliveryName" placeholder="Digite seu nome" class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm">
+       </div>
+       <div id="addressFields">
+        <div><label class="block text-white font-medium text-sm mb-2">📍 Endereço</label> <input type="text" id="deliveryAddress" placeholder="Rua, número, bairro" class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm">
+        </div>
+        <div class="mt-3"><label class="block text-white font-medium text-sm mb-2">🏷️ Referência (opcional)</label> <input type="text" id="deliveryReference" placeholder="Ex: Próximo ao mercado, Apto 302" class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm">
+        </div>
+       </div>
+       <div><label class="block text-white font-medium text-sm mb-2">📞 Contato (WhatsApp)</label> <input type="text" id="deliveryContact" placeholder="(62) 98888-8888" class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm">
+       </div>
+      </div><!-- Forma de Pagamento -->
+      <div class="border-t border-white/10 pt-4">
+       <h4 class="font-logo text-sm font-bold text-orange-300 mb-3">💳 Forma de Pagamento</h4>
+       <div class="space-y-2"><label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="paymentMethod" value="pix" class="w-4 h-4 cursor-pointer accent-orange-500" checked onchange="toggleCashOptions()"> <span class="text-white font-medium">PIX</span> </label> <label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="paymentMethod" value="cartao" class="w-4 h-4 cursor-pointer accent-orange-500" onchange="toggleCashOptions()"> <span class="text-white font-medium">Cartão</span> </label> <label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="paymentMethod" value="dinheiro" class="w-4 h-4 cursor-pointer accent-orange-500" onchange="toggleCashOptions()"> <span class="text-white font-medium">Dinheiro</span> </label>
+       </div>
+      </div><!-- Opções de Dinheiro -->
+      <div id="cashOptions" class="hidden border-t border-white/10 pt-4 space-y-3">
+       <div><label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="cashChange" value="noChange" class="w-4 h-4 cursor-pointer accent-orange-500" checked onchange="toggleChangeAmount()"> <span class="text-white font-medium">Sem troco</span> </label> <label class="flex items-center gap-3 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="radio" name="cashChange" value="withChange" class="w-4 h-4 cursor-pointer accent-orange-500" onchange="toggleChangeAmount()"> <span class="text-white font-medium">Preciso de troco</span> </label>
+       </div>
+       <div id="changeAmountField" class="hidden"><label class="block text-white font-medium text-sm mb-2">🪙 Troco para quanto?</label> <input type="number" id="changeAmount" placeholder="Ex: 100" class="w-full bg-white/10 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-sm" step="0.01" min="0">
+       </div>
+      </div>
+     </div><!-- Botões -->
+     <div class="flex gap-2 p-4 border-t border-white/10 bg-gradient-to-t from-black/20 to-transparent rounded-b-3xl sticky bottom-0 z-10"><button type="button" id="sendOrderBtn" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm shadow-lg hover:shadow-green-500/50"> ✓ Enviar Pedido </button> <button type="button" onclick="closeDeliveryForm()" class="flex-1 bg-gray-700/50 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm border border-gray-600/50"> ✕ Cancelar </button>
+     </div>
+    </div>
+   </div><!-- Modal de Personalização -->
+   <div id="personalizationModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="card-gradient rounded-3xl border border-orange-500/20 shadow-2xl w-full max-w-md">
+     <!-- Header -->
+     <div class="bg-gradient-to-r from-orange-600 to-orange-500 px-6 py-4 flex justify-between items-center rounded-t-3xl">
+      <div>
+       <h3 class="font-logo text-2xl font-bold text-white" id="modalTitle">Personalizar</h3>
+       <p class="text-orange-100 text-xs" id="modalSubtitle">Customize seu lanche</p>
+      </div><button type="button" onclick="closePersonalizationModal()" class="text-white hover:text-orange-100 text-2xl transition-all hover:scale-110">✕</button>
+     </div><!-- Conteúdo em Dropdown -->
+     <div class="p-6 space-y-4 max-h-96 overflow-y-auto">
+      <!-- Personalizar Ingredientes -->
+      <div>
+       <h4 class="font-logo text-sm font-bold text-orange-300 mb-3 flex items-center gap-2"><span>🎯</span> Ingredientes</h4>
+       <div id="ingredientsList" class="space-y-2"></div>
+      </div><!-- Observações -->
+      <div class="border-t border-white/10 pt-4">
+       <h4 class="font-logo text-sm font-bold text-orange-300 mb-2 flex items-center gap-2"><span>📝</span> Observações</h4><textarea id="personalizationNotes" placeholder="Ex: Sem tomate, muito molho..." class="w-full bg-white/5 text-white border-2 border-white/10 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500 font-body text-xs resize-none" rows="2"></textarea>
+      </div><!-- Resumo de Preço -->
+      <div class="border-t border-white/10 pt-4 bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-lg p-3 border border-orange-500/20">
+       <div class="space-y-1 text-xs">
+        <div class="flex justify-between">
+         <span class="text-gray-300">Base:</span> <span class="text-white font-semibold" id="basePrice">R$ 0,00</span>
+        </div>
+        <div class="flex justify-between">
+         <span class="text-orange-300">Adicionais:</span> <span class="text-orange-400 font-bold" id="addsPrice">R$ 0,00</span>
+        </div>
+        <div class="border-t border-white/10 my-1 pt-1">
+         <div class="flex justify-between">
+          <span class="text-white font-logo font-bold">Total:</span> <span class="text-orange-400 font-logo font-bold" id="finalPrice">R$ 0,00</span>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Botões -->
+     <div class="flex gap-2 p-4 border-t border-white/10 bg-gradient-to-t from-black/20 to-transparent rounded-b-3xl">
+      <button type="button" onclick="savePersonalization()" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm shadow-lg hover:shadow-green-500/50"> ✓ Salvar </button> <button type="button" onclick="closePersonalizationModal()" class="flex-1 bg-gray-700/50 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-lg transition-all text-sm border border-gray-600/50"> ✕ Cancelar </button>
+     </div>
+    </div>
+   </div><!-- Header Principal -->
+   <header class="relative py-12 px-4 text-center overflow-hidden">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none">
+     <div class="absolute top-10 left-10 text-6xl opacity-20 float-animation" style="animation-delay: 0s;">
+      🍔
+     </div>
+     <div class="absolute top-20 right-16 text-5xl opacity-20 float-animation" style="animation-delay: 0.5s;">
+      🍟
+     </div>
+     <div class="absolute bottom-10 left-1/4 text-4xl opacity-20 float-animation" style="animation-delay: 1s;">
+      🍽️
+     </div>
+     <div class="absolute bottom-16 right-1/4 text-5xl opacity-20 float-animation" style="animation-delay: 1.5s;">
+      🍽️
+     </div>
+    </div>
+    <div class="relative z-10">
+     <h1 class="font-logo text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-500 mb-4 tracking-tight">Expresso Lanches</h1>
+     <p class="text-xl md:text-2xl text-orange-200/80 font-medium tracking-wide">Nosso cardápio</p>
+    </div>
+   </header><!-- Carrinho Flutuante -->
+   <div class="fixed bottom-6 right-4 md:right-6 z-40">
+    <button type="button" onclick="toggleCart()" class="relative bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3 px-4 md:px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 flex items-center gap-2 text-sm md:text-base"> 🛒 <span class="hidden sm:inline">Carrinho</span> <span id="cartCount" class="bg-red-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">0</span> </button> <!-- Dropdown do Carrinho -->
+    <div id="cartDropdown" class="hidden fixed md:absolute bottom-0 md:bottom-20 left-0 right-0 md:left-auto md:right-0 top-0 md:top-auto md:w-96 card-gradient rounded-t-2xl md:rounded-2xl p-4 md:p-6 border-t md:border border-white/10 shadow-2xl max-h-screen md:max-h-96 overflow-y-auto">
+     <div class="flex justify-between items-center mb-4 md:block">
+      <h3 class="font-logo text-xl font-bold text-orange-400">Seu Carrinho</h3><button type="button" onclick="toggleCart()" class="md:hidden text-white hover:text-orange-300 text-2xl transition-all">✕</button>
+     </div>
+     <div id="cartItems" class="mb-4">
+      <p class="text-gray-300 text-center py-8">Carrinho vazio</p>
+     </div>
+     <div id="cartTotal" class="hidden border-t border-white/10 pt-4 mb-4">
+      <div class="flex justify-between text-gray-300 mb-2 text-sm">
+       <span>Subtotal:</span> <span id="subtotalPrice">R$ 0,00</span>
+      </div>
+      <div class="flex justify-between text-gray-300 mb-3 text-sm">
+       <span>Taxa de entrega:</span> <span id="deliveryFeePrice">R$ 0,00</span>
+      </div>
+      <div class="flex justify-between text-white font-bold mb-4 border-t border-white/10 pt-2">
+       <span>Total:</span> <span id="totalPrice">R$ 0,00</span>
+      </div><button type="button" onclick="openDeliveryForm()" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300"> 📱 Finalizar Pedido </button>
+     </div>
+    </div>
+   </div><!-- Cardápio -->
+   <main class="max-w-6xl mx-auto px-4 pb-12">
+    <!-- Lanches Tradicionais -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍔</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Lanches Tradicionais</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Americano -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Americano</h3><span class="text-white font-bold text-lg">R$ 21,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, salsicha, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_americano" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Americano', 21.00, 'carne_americano')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Americano', 21.00, 'carne_americano')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Simples -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Simples</h3><span class="text-white font-bold text-lg">R$ 23,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, salsicha, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_simples" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Simples', 23.00, 'carne_simples')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Simples', 23.00, 'carne_simples')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Super -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Super</h3><span class="text-white font-bold text-lg">R$ 24,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, salsicha, ovo, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_super" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Super', 24.00, 'carne_super')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Super', 24.00, 'carne_super')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- X-Tudo -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">X-Tudo</h3><span class="text-white font-bold text-lg">R$ 25,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, ovo, bacon, salsicha, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_xtudo" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('X-Tudo', 25.00, 'carne_xtudo')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('X-Tudo', 25.00, 'carne_xtudo')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- X-Bacon -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">X-Bacon</h3><span class="text-white font-bold text-lg">R$ 26,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, salsicha, ovo, dobro de bacon, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_xbacon" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('X-Bacon', 26.00, 'carne_xbacon')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('X-Bacon', 26.00, 'carne_xbacon')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Mestre -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Mestre</h3><span class="text-white font-bold text-lg">R$ 27,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, salsicha, ovo, bacon, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_mestre" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Mestre', 27.00, 'carne_mestre')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Mestre', 27.00, 'carne_mestre')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Duplo -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Duplo</h3><span class="text-white font-bold text-lg">R$ 30,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, duas carnes, dois ovos, presunto, mussarela, salsicha, bacon, tomate, alface, abacaxi, milho e batata palha.</p><select id="carne_duplo" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Duplo', 30.00, 'carne_duplo')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Duplo', 30.00, 'carne_duplo')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Só Quente -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Só Quente</h3><span class="text-white font-bold text-lg">R$ 25,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, carne, presunto, mussarela, ovo, salsicha.</p><select id="carne_soquente" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha a carne</option> <option value="Hambúrguer caseiro" class="bg-gray-900">Hambúrguer caseiro</option> <option value="Filé bovino" class="bg-gray-900">Filé bovino</option> <option value="Filé de frango" class="bg-gray-900">Filé de frango</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="openPersonalizationModal('Só Quente', 25.00, 'carne_soquente')" class="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> ✏️ Personalizar </button> <button type="button" onclick="addLancheToCarte('Só Quente', 25.00, 'carne_soquente')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+       </div>
+      </div><!-- Misto -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Misto</h3><span class="text-white font-bold text-lg">R$ 13,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, presunto e mussarela.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('Misto', 13.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('misto')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div><!-- Bauru Simples -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Bauru Simples</h3><span class="text-white font-bold text-lg">R$ 15,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, presunto, mussarela, tomate e alface.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('Bauru Simples', 15.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('bauru-simples')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div><!-- Bauru Super -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Bauru Super</h3><span class="text-white font-bold text-lg">R$ 20,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão, presunto, mussarela, salsicha, ovo, tomate, alface, abacaxi, milho e batata palha.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('Bauru Super', 20.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('bauru-super')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section><!-- Sanduíches Burger Gourmet -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍔</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Sanduíches Burger Gourmet</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- X-Burger -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">X-Burger</h3><span class="text-white font-bold text-lg">R$ 23,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão de brioche, hambúrguer, cheddar, alface, tomate e cebola.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('X-Burger', 23.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('x-burger')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div><!-- Double Burger -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Double Burger</h3><span class="text-white font-bold text-lg">R$ 29,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão de brioche, 2 hambúrgueres, bacon, alface, tomate e cebola.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('Double Burger', 29.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('double-burger')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div><!-- Littler Bacon -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Littler Bacon</h3><span class="text-white font-bold text-lg">R$ 26,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-3">Pão de brioche, hambúrguer, bacon, alface e cebola.</p>
+       <div class="flex gap-2">
+        <button type="button" onclick="addToCart('Littler Bacon', 26.00)" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('littler-bacon')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section><!-- Porções de Batata -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍟</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Porções de Batata</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Batata</h3>
+       </div><select id="batataSel" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body"> <option value="" class="bg-gray-900">Escolha o tamanho</option> <option value="Batata Pequena|15.00" class="bg-gray-900">Pequena - R$ 15,00</option> <option value="Batata Média|25.00" class="bg-gray-900">Média - R$ 25,00</option> <option value="Batata Grande|30.00" class="bg-gray-900">Grande - R$ 30,00</option> </select>
+       <div class="space-y-2 mb-4"><label class="flex items-center gap-2 cursor-pointer"> <input type="checkbox" id="batataCheddar" class="w-4 h-4 rounded bg-white/10 border border-white/20 cursor-pointer accent-orange-500"> <span class="text-gray-300 text-sm">Cheddar +R$ 5,00</span> </label> <label class="flex items-center gap-2 cursor-pointer"> <input type="checkbox" id="batataBacon" class="w-4 h-4 rounded bg-white/10 border border-white/20 cursor-pointer accent-orange-500"> <span class="text-gray-300 text-sm">Bacon +R$ 10,00</span> </label>
+       </div>
+       <div class="flex gap-2">
+        <button type="button" onclick="addBatataToCart()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('batata')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section><!-- Jantinha -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍽️</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Jantinha</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Jantinha Completa</h3><span class="text-white font-bold text-lg">R$ 20,00</span>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-4">Arroz, feijão tropeiro, mandioca, vinagrete e espetinho.</p>
+       <select id="espetoSel" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha o espeto</option> <option value="Alcatra" class="bg-gray-900">Alcatra</option> <option value="Frango com Bacon" class="bg-gray-900">Frango com Bacon</option> <option value="Linguiça Apimentada" class="bg-gray-900">Linguiça Apimentada</option> <option value="Kafta" class="bg-gray-900">Kafta</option> <option value="Coração de Galinha" class="bg-gray-900">Coração de Galinha</option> </select>
+       <div class="mb-3">
+        <label class="flex items-center gap-2 p-3 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all border-2 border-white/10 hover:border-orange-500/50"> <input type="checkbox" id="espetoExtra" class="w-4 h-4 rounded bg-white/10 border border-white/20 cursor-pointer accent-orange-500" onchange="toggleExtraEspeto()"> <span class="text-gray-300 text-sm">Espetinho Extra +R$ 10,00</span> </label>
+        <select id="espetoExtraSelect" class="hidden w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mt-2 focus:outline-none focus:border-orange-500/50 font-body text-sm"> <option value="" class="bg-gray-900">Escolha o espeto extra</option> <option value="Alcatra" class="bg-gray-900">Alcatra</option> <option value="Frango com Bacon" class="bg-gray-900">Frango com Bacon</option> <option value="Linguiça Apimentada" class="bg-gray-900">Linguiça Apimentada</option> <option value="Kafta" class="bg-gray-900">Kafta</option> <option value="Coração de Galinha" class="bg-gray-900">Coração de Galinha</option> </select>
+       </div>
+       <div class="flex gap-2">
+        <button type="button" onclick="addJantinhaToCart()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('jantinha')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section>
+
+    <!-- Bebidas -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🥤</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Bebidas</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Refrigerante Lata -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Refrigerante Lata</h3>
+       </div>
+       <select id="refriLata" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body text-sm">
+        <option value="" class="bg-gray-900">Escolha a bebida</option>
+        <option value="Coca-Cola lata|6.00" class="bg-gray-900">Coca-Cola lata – R$ 6,00</option>
+        <option value="Guaraná lata|6.00" class="bg-gray-900">Guaraná lata – R$ 6,00</option>
+        <option value="Fanta lata|6.00" class="bg-gray-900">Fanta lata – R$ 6,00</option>
+        <option value="Coca-Cola Zero lata|7.00" class="bg-gray-900">Coca-Cola Zero lata – R$ 7,00</option>
+       </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addRefriToCart('refriLata')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+        <button type="button" onclick="openSimpleNotesModal('refri-lata')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+      <!-- Refrigerante 1 Litro -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Refrigerante 1L</h3>
+       </div>
+       <select id="refri1L" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body text-sm">
+        <option value="" class="bg-gray-900">Escolha a bebida</option>
+        <option value="Coca-Cola 1 litro|10.00" class="bg-gray-900">Coca-Cola 1 litro – R$ 10,00</option>
+        <option value="Coca-Cola Zero 1 litro|11.00" class="bg-gray-900">Coca-Cola Zero 1 litro – R$ 11,00</option>
+        <option value="Guaraná 1 litro|9.00" class="bg-gray-900">Guaraná 1 litro – R$ 9,00</option>
+        <option value="Fanta 1 litro|9.00" class="bg-gray-900">Fanta 1 litro – R$ 9,00</option>
+       </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addRefriToCart('refri1L')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+        <button type="button" onclick="openSimpleNotesModal('refri-1l')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+      <!-- Refrigerante 2 Litros -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Refrigerante 2L</h3>
+       </div>
+       <select id="refri2L" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body text-sm">
+        <option value="" class="bg-gray-900">Escolha a bebida</option>
+        <option value="Coca-Cola 2 litros|14.00" class="bg-gray-900">Coca-Cola 2 litros – R$ 14,00</option>
+        <option value="Guaraná 2 litros|12.00" class="bg-gray-900">Guaraná 2 litros – R$ 12,00</option>
+        <option value="Fanta 2 litros|12.00" class="bg-gray-900">Fanta 2 litros – R$ 12,00</option>
+        <option value="Coca-Cola Zero 2 litros|15.00" class="bg-gray-900">Coca-Cola Zero 2 litros – R$ 15,00</option>
+       </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addRefriToCart('refri2L')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+        <button type="button" onclick="openSimpleNotesModal('refri-2l')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+      <!-- Água -->
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Água (500 ml)</h3>
+       </div>
+       <select id="agua" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body text-sm">
+        <option value="" class="bg-gray-900">Escolha a água</option>
+        <option value="Água sem gás (500 ml)|3.00" class="bg-gray-900">Água sem gás (500 ml) – R$ 3,00</option>
+        <option value="Água com gás (500 ml)|4.00" class="bg-gray-900">Água com gás (500 ml) – R$ 4,00</option>
+       </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addRefriToCart('agua')" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button>
+        <button type="button" onclick="openSimpleNotesModal('agua')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section>
+
+    <!-- Sucos -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🥤</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Sucos (copo 500 ml)</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Suco</h3><span class="text-white font-bold text-lg">R$ 8,00</span>
+       </div><select id="sucoSel" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body"> <option value="" class="bg-gray-900">Escolha o sabor</option> <option value="Suco de Maracujá" class="bg-gray-900">Maracujá</option> <option value="Suco de Morango" class="bg-gray-900">Morango</option> <option value="Suco de Açaí" class="bg-gray-900">Açaí</option> <option value="Suco de Cupuaçu" class="bg-gray-900">Cupuaçu</option> <option value="Suco de Caju" class="bg-gray-900">Caju</option> <option value="Suco de Tamarindo" class="bg-gray-900">Tamarindo</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addSucoToCart()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('suco')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section><!-- Creme -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍦</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Creme (copo 500 ml)</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Creme</h3><span class="text-white font-bold text-lg">R$ 14,00</span>
+       </div><select id="cremeSel" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body"> <option value="" class="bg-gray-900">Escolha o sabor</option> <option value="Creme de Maracujá" class="bg-gray-900">Maracujá</option> <option value="Creme de Morango" class="bg-gray-900">Morango</option> <option value="Creme de Açaí" class="bg-gray-900">Açaí</option> <option value="Creme de Cupuaçu" class="bg-gray-900">Cupuaçu</option> <option value="Creme de Caju" class="bg-gray-900">Caju</option> <option value="Creme de Tamarindo" class="bg-gray-900">Tamarindo</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addCremeToCart()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('creme')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section><!-- Caldo de Frango -->
+    <section class="mb-12">
+     <div class="flex items-center gap-3 mb-8">
+      <span class="text-4xl">🍲</span>
+      <h2 class="font-logo text-3xl font-bold text-white">Caldo de Frango</h2>
+     </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="card-gradient rounded-2xl p-6 border border-white/10 shadow-lg hover:shadow-xl hover:border-orange-500/30 transition-all duration-300">
+       <div class="flex justify-between items-start mb-3">
+        <h3 class="font-logo text-xl font-bold text-orange-400">Caldo de Frango</h3>
+       </div>
+       <p class="text-gray-300 text-sm leading-relaxed mb-4">Acompanha: torrada + cheiro-verde</p><select id="caldoSel" class="w-full bg-white/10 text-white border border-white/20 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:border-orange-500/50 font-body"> <option value="" class="bg-gray-900">Escolha o tamanho</option> <option value="Caldo de Frango 300ml|13.00" class="bg-gray-900">300ml - R$ 13,00</option> <option value="Caldo de Frango 500ml|16.00" class="bg-gray-900">500ml - R$ 16,00</option> </select>
+       <div class="flex gap-2">
+        <button type="button" onclick="addCaldoToCart()" class="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 transform hover:scale-105"> 🛒 Adicionar </button> <button type="button" onclick="openSimpleNotesModal('caldo')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg py-2 px-3 rounded-lg transition-all duration-300 w-12 h-10 flex items-center justify-center"> 📝 </button>
+       </div>
+      </div>
+     </div>
+    </section>
+   </main><!-- Footer -->
+   <footer class="text-center py-6 border-t border-white/10">
+    <p class="text-gray-500 text-sm">© 2024 Expresso Lanches - Todos os direitos reservados</p>
+   </footer>
+  </div>
+  <script>
+    let cart = [];
+    let savedPersonalization = null;
+    let simpleNotes = '';
+    let currentSimpleNotesContext = null;
+    let currentPersonalization = {
+      item: '',
+      price: 0,
+      meat: '',
+      carneSelectId: '',
+      modifications: {},
+      notes: '',
+      baseIngredients: []
+    };
+
+    const allIngredients = [
+      { name: 'Hambúrguer caseiro', price: 5.00, isBase: false },
+      { name: 'Filé de frango', price: 6.00, isBase: false },
+      { name: 'Filé bovino', price: 6.00, isBase: false },
+      { name: 'Cheddar', price: 5.00, isBase: false },
+      { name: 'Bacon', price: 4.00, isBase: false },
+      { name: 'Presunto', price: 4.00, isBase: false },
+      { name: 'Mussarela', price: 4.00, isBase: false },
+      { name: 'Salsicha', price: 3.00, isBase: false },
+      { name: 'Ovo', price: 2.00, isBase: false },
+      { name: 'Tomate', price: 1.00, isBase: false },
+      { name: 'Alface', price: 1.00, isBase: false },
+      { name: 'Abacaxi', price: 1.00, isBase: false },
+      { name: 'Milho', price: 1.00, isBase: false },
+      { name: 'Batata palha', price: 1.00, isBase: false }
+    ];
+
+    const baseIngredientsList = {
+      'Americano': ['Presunto', 'Salsicha', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'Simples': ['Presunto', 'Mussarela', 'Salsicha', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'Super': ['Presunto', 'Mussarela', 'Salsicha', 'Ovo', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'X-Tudo': ['Presunto', 'Mussarela', 'Ovo', 'Bacon', 'Salsicha', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'X-Bacon': ['Presunto', 'Mussarela', 'Ovo', 'Bacon', 'Salsicha', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'Mestre': ['Presunto', 'Mussarela', 'Salsicha', 'Ovo', 'Bacon', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'Duplo': ['Ovo', 'Ovo', 'Presunto', 'Mussarela', 'Salsicha', 'Bacon', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'Só Quente': ['Presunto', 'Mussarela', 'Ovo', 'Salsicha'],
+      'Misto': ['Presunto', 'Mussarela'],
+      'Bauru Simples': ['Presunto', 'Mussarela', 'Tomate', 'Alface'],
+      'Bauru Super': ['Presunto', 'Mussarela', 'Salsicha', 'Ovo', 'Tomate', 'Alface', 'Abacaxi', 'Milho', 'Batata palha'],
+      'X-Burger': ['Cheddar', 'Alface', 'Tomate'],
+      'Double Burger': ['Hambúrguer caseiro', 'Hambúrguer caseiro', 'Bacon', 'Alface', 'Tomate'],
+      'Littler Bacon': ['Hambúrguer caseiro', 'Bacon', 'Alface']
+    };
+
+    // Attach event listener to the send order button
+    document.addEventListener('DOMContentLoaded', function() {
+      const sendOrderBtn = document.getElementById('sendOrderBtn');
+      if (sendOrderBtn) {
+        sendOrderBtn.addEventListener('click', sendToWhatsApp);
+      }
+    });
+
+    function toggleExtraEspeto() {
+      const espetoExtraCheckbox = document.getElementById('espetoExtra');
+      const espetoExtraSelect = document.getElementById('espetoExtraSelect');
+      
+      if (espetoExtraCheckbox.checked) {
+        espetoExtraSelect.classList.remove('hidden');
+        espetoExtraSelect.value = '';
+      } else {
+        espetoExtraSelect.classList.add('hidden');
+        espetoExtraSelect.value = '';
+      }
+    }
+
+    function openSimpleNotesModal(context) {
+      currentSimpleNotesContext = context;
+      document.getElementById('simpleNotesInput').value = '';
+      document.getElementById('simpleNotesModal').classList.remove('hidden');
+    }
+
+    function closeSimpleNotesModal() {
+      document.getElementById('simpleNotesModal').classList.add('hidden');
+      currentSimpleNotesContext = null;
+    }
+
+    function saveSimpleNotes() {
+      simpleNotes = document.getElementById('simpleNotesInput').value;
+      closeSimpleNotesModal();
+    }
+
+    function openDeliveryForm() {
+      document.getElementById('deliveryModal').classList.remove('hidden');
+    }
+
+    function closeDeliveryForm() {
+      document.getElementById('deliveryModal').classList.add('hidden');
+    }
+
+    function toggleDeliveryFields() {
+      const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+      const addressFields = document.getElementById('addressFields');
+      
+      if (deliveryType === 'balcao') {
+        addressFields.style.display = 'none';
+      } else {
+        addressFields.style.display = 'block';
+      }
+    }
+
+    function toggleCashOptions() {
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+      const cashOptions = document.getElementById('cashOptions');
+      
+      if (paymentMethod === 'dinheiro') {
+        cashOptions.classList.remove('hidden');
+      } else {
+        cashOptions.classList.add('hidden');
+      }
+    }
+
+    function toggleChangeAmount() {
+      const cashChange = document.querySelector('input[name="cashChange"]:checked').value;
+      const changeAmountField = document.getElementById('changeAmountField');
+      
+      if (cashChange === 'withChange') {
+        changeAmountField.classList.remove('hidden');
+      } else {
+        changeAmountField.classList.add('hidden');
+      }
+    }
+
+    function openPersonalizationModal(item, price, carneSelectId) {
+      const carneSelect = document.getElementById(carneSelectId);
+      if (!carneSelect.value) {
+        alert('Por favor, escolha a carne primeiro!');
+        return;
+      }
+
+      currentPersonalization = {
+        item: item,
+        price: price,
+        meat: carneSelect.value,
+        carneSelectId: carneSelectId,
+        modifications: {},
+        notes: '',
+        baseIngredients: baseIngredientsList[item] || []
+      };
+
+      document.getElementById('modalTitle').textContent = `Personalizar ${item}`;
+      document.getElementById('modalSubtitle').textContent = `Carne: ${carneSelect.value}`;
+      document.getElementById('personalizationNotes').value = '';
+      document.getElementById('basePrice').textContent = `R$ ${price.toFixed(2).replace('.', ',')}`;
+
+      renderPersonalizationOptions();
+      updatePriceDisplay();
+      document.getElementById('personalizationModal').classList.remove('hidden');
+    }
+
+    function openSimplePersonalizationModal(item, price, ingredients) {
+      currentPersonalization = {
+        item: item,
+        price: price,
+        meat: '',
+        carneSelectId: '',
+        modifications: {},
+        notes: '',
+        baseIngredients: ingredients
+      };
+
+      document.getElementById('modalTitle').textContent = `Personalizar ${item}`;
+      document.getElementById('modalSubtitle').textContent = 'Customize seu pedido';
+      document.getElementById('personalizationNotes').value = '';
+      document.getElementById('basePrice').textContent = `R$ ${price.toFixed(2).replace('.', ',')}`;
+
+      renderPersonalizationOptions();
+      updatePriceDisplay();
+      document.getElementById('personalizationModal').classList.remove('hidden');
+    }
+
+    function renderPersonalizationOptions() {
+      const ingredientsList = document.getElementById('ingredientsList');
+      ingredientsList.innerHTML = '';
+
+      allIngredients.forEach(ingredient => {
+        const mods = currentPersonalization.modifications[ingredient.name] || { add: 0, remove: false };
+        const isBase = currentPersonalization.baseIngredients.includes(ingredient.name);
+        const isRemoved = mods.remove;
+        const addedQty = mods.add;
+
+        const container = document.createElement('div');
+        container.className = `${isRemoved ? 'bg-red-600/20 border-red-500/50' : 'bg-white/5 border-white/10'} border rounded-lg p-2 hover:bg-white/10 transition-all`;
+        container.id = `ingredient-${ingredient.name}`;
+        
+        container.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              <div class="text-white font-medium text-xs flex items-center gap-1">
+                ${ingredient.name}
+                ${isRemoved ? '<span class="text-red-300 text-xs">(removido)</span>' : ''}
+                ${isBase && !isRemoved && addedQty === 0 ? '<span class="text-green-300 text-xs">(padrão)</span>' : ''}
+              </div>
+              <div class="text-orange-300 text-xs">+R$ ${ingredient.price.toFixed(2).replace('.', ',')}</div>
+            </div>
+            <div class="flex gap-1 items-center">
+              <button class="stepper-button remove-btn ${isRemoved ? 'bg-red-600 hover:bg-red-700' : isBase ? 'bg-orange-600 hover:bg-orange-700' : 'bg-gray-600 cursor-not-allowed opacity-50'} text-white font-bold py-1 px-1.5 rounded text-xs w-6 h-6" ${!isBase && !isRemoved ? 'disabled' : ''}>✕</button>
+              <button class="stepper-button sub-btn ${isRemoved || addedQty === 0 ? 'bg-gray-600 cursor-not-allowed opacity-50' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-1 px-1.5 rounded text-xs w-6 h-6" ${isRemoved || addedQty === 0 ? 'disabled' : ''}>−</button>
+              <span class="qty-display text-white font-bold text-xs w-6 text-center">${addedQty}</span>
+              <button class="stepper-button add-btn ${isRemoved ? 'bg-gray-600 cursor-not-allowed opacity-50' : 'bg-green-600 hover:bg-green-700'} text-white font-bold py-1 px-1.5 rounded text-xs w-6 h-6" ${isRemoved ? 'disabled' : ''}>+</button>
+            </div>
+          </div>
+        `;
+
+        const removeBtn = container.querySelector('.remove-btn');
+        const subBtn = container.querySelector('.sub-btn');
+        const addBtn = container.querySelector('.add-btn');
+        const ingName = ingredient.name;
+        
+        removeBtn.addEventListener('click', () => {
+          if (isBase || isRemoved) modifyIngredient(ingName, 'remove');
+        });
+        subBtn.addEventListener('click', () => {
+          if (!isRemoved && addedQty > 0) modifyIngredient(ingName, 'sub');
+        });
+        addBtn.addEventListener('click', () => {
+          if (!isRemoved) modifyIngredient(ingName, 'add');
+        });
+
+        ingredientsList.appendChild(container);
+      });
+    }
+
+    function modifyIngredient(ingredientName, action) {
+      if (!currentPersonalization.modifications[ingredientName]) {
+        currentPersonalization.modifications[ingredientName] = { add: 0, remove: false };
+      }
+
+      if (action === 'add') {
+        currentPersonalization.modifications[ingredientName].add++;
+      } else if (action === 'sub') {
+        if (currentPersonalization.modifications[ingredientName].add > 0) {
+          currentPersonalization.modifications[ingredientName].add--;
+        }
+      } else if (action === 'remove') {
+        currentPersonalization.modifications[ingredientName].remove = !currentPersonalization.modifications[ingredientName].remove;
+      }
+
+      renderPersonalizationOptions();
+      updatePriceDisplay();
+    }
+
+    function updatePriceDisplay() {
+      let totalAdd = 0;
+      const meatIngredients = ['Hambúrguer caseiro', 'Filé de frango', 'Filé bovino'];
+      
+      let removedOneRealCount = 0;
+      Object.keys(currentPersonalization.modifications).forEach(ingredient => {
+        const mods = currentPersonalization.modifications[ingredient];
+        const ing = allIngredients.find(i => i.name === ingredient);
+        if (ing && mods.remove && ing.price === 1.00 && !meatIngredients.includes(ingredient)) {
+          removedOneRealCount++;
+        }
+      });
+
+      Object.keys(currentPersonalization.modifications).forEach(ingredient => {
+        const mods = currentPersonalization.modifications[ingredient];
+        const ing = allIngredients.find(i => i.name === ingredient);
+        if (ing && !mods.remove) {
+          if (ing.price === 1.00 && !meatIngredients.includes(ingredient) && mods.add > 0 && removedOneRealCount > 0) {
+            removedOneRealCount -= mods.add;
+            if (removedOneRealCount < 0) {
+              totalAdd += ing.price * Math.abs(removedOneRealCount);
+              removedOneRealCount = 0;
+            }
+          } else {
+            totalAdd += ing.price * mods.add;
+          }
+        }
+      });
+
+      const total = currentPersonalization.price + totalAdd;
+      document.getElementById('addsPrice').textContent = `R$ ${totalAdd.toFixed(2).replace('.', ',')}`;
+      document.getElementById('finalPrice').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+    }
+
+    function savePersonalization() {
+      const notes = document.getElementById('personalizationNotes').value;
+      currentPersonalization.notes = notes;
+      savedPersonalization = JSON.parse(JSON.stringify(currentPersonalization));
+      closePersonalizationModal();
+    }
+
+    function closePersonalizationModal() {
+      document.getElementById('personalizationModal').classList.add('hidden');
+      currentPersonalization = {
+        item: '',
+        price: 0,
+        meat: '',
+        carneSelectId: '',
+        modifications: {},
+        notes: '',
+        baseIngredients: []
+      };
+    }
+
+    function addToCart(item, price) {
+      let fullName = item;
+      if (simpleNotes) {
+        fullName = `${item}\nObs: ${simpleNotes}`;
+      }
+
+      const existingItem = cart.find(c => c.name === fullName);
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({ name: fullName, price: price, quantity: 1 });
+      }
+      simpleNotes = '';
+      updateCart();
+    }
+
+    function addJantinhaToCart() {
+      const espetoSelect = document.getElementById('espetoSel');
+      const espetoExtraCheckbox = document.getElementById('espetoExtra');
+      const espetoExtraSelect = document.getElementById('espetoExtraSelect');
+      
+      if (espetoSelect.value) {
+        const espeto = espetoSelect.value;
+        let fullName = `Jantinha Completa - ${espeto}`;
+        let price = 20.00;
+        const additions = [];
+        
+        if (espetoExtraCheckbox.checked) {
+          if (!espetoExtraSelect.value) {
+            alert('Por favor, escolha qual espetinho extra deseja!');
+            return;
+          }
+          price += 10.00;
+          additions.push(`+ Espetinho Extra - ${espetoExtraSelect.value}`);
+        }
+        
+        if (additions.length > 0) {
+          fullName = fullName + '\n' + additions.join('\n');
+        }
+        
+        if (simpleNotes) {
+          fullName = fullName + '\nObs: ' + simpleNotes;
+        }
+
+        const existingItem = cart.find(c => c.name === fullName);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: fullName, price: price, quantity: 1 });
+        }
+        
+        espetoSelect.value = '';
+        espetoExtraCheckbox.checked = false;
+        espetoExtraSelect.classList.add('hidden');
+        espetoExtraSelect.value = '';
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function addLancheToCarte(item, price, carneSelectId) {
+      if (savedPersonalization && savedPersonalization.item === item && savedPersonalization.meat) {
+        addSavedPersonalizedToCart(item, price, carneSelectId);
+        savedPersonalization = null;
+      } else {
+        const carneSelect = document.getElementById(carneSelectId);
+        
+        if (carneSelect.value) {
+          const meat = carneSelect.value;
+          const fullName = `${item} - ${meat}`;
+          
+          const existingItem = cart.find(c => c.name === fullName);
+          if (existingItem) {
+            existingItem.quantity += 1;
+          } else {
+            cart.push({ name: fullName, price: price, quantity: 1 });
+          }
+          
+          carneSelect.value = '';
+          updateCart();
+        }
+      }
+    }
+
+    function addSavedPersonalizedToCart(item, price, carneSelectId) {
+      let totalPrice = price;
+      const modifications = [];
+      const meatIngredients = ['Hambúrguer caseiro', 'Filé de frango', 'Filé bovino'];
+      
+      Object.keys(savedPersonalization.modifications).forEach(ingredient => {
+        const mods = savedPersonalization.modifications[ingredient];
+        const ing = allIngredients.find(i => i.name === ingredient);
+        
+        if (mods.remove && savedPersonalization.baseIngredients.includes(ingredient)) {
+          modifications.push(`Sem ${ingredient}`);
+        }
+        
+        if (mods.add > 0) {
+          if (ing) {
+            let removedOneRealCount = 0;
+            Object.keys(savedPersonalization.modifications).forEach(removed => {
+              const modRemoved = savedPersonalization.modifications[removed];
+              const ingRemoved = allIngredients.find(i => i.name === removed);
+              if (ingRemoved && modRemoved.remove && ingRemoved.price === 1.00 && !meatIngredients.includes(removed)) {
+                removedOneRealCount++;
+              }
+            });
+
+            if (ing.price === 1.00 && !meatIngredients.includes(ingredient) && removedOneRealCount > 0) {
+              removedOneRealCount -= mods.add;
+              if (removedOneRealCount < 0) {
+                totalPrice += ing.price * Math.abs(removedOneRealCount);
+              }
+            } else {
+              totalPrice += ing.price * mods.add;
+            }
+            modifications.push(`+ ${ingredient} (x${mods.add})`);
+          }
+        }
+      });
+
+      const parts = [
+        `${item}${savedPersonalization.meat ? ' - ' + savedPersonalization.meat : ''}`,
+        modifications.length > 0 ? modifications.join('\n') : null,
+        savedPersonalization.notes ? `Obs: ${savedPersonalization.notes}` : null
+      ].filter(Boolean);
+
+      const description = parts.join('\n');
+
+      const existingItem = cart.find(c => c.name === description);
+      if (existingItem) {
+        existingItem.quantity += 1;
+      } else {
+        cart.push({ name: description, price: totalPrice, quantity: 1 });
+      }
+
+      if (carneSelectId) {
+        document.getElementById(carneSelectId).value = '';
+      }
+      updateCart();
+    }
+
+    function addBatataToCart() {
+      const select = document.getElementById('batataSel');
+      const cheddarCheckbox = document.getElementById('batataCheddar');
+      const baconCheckbox = document.getElementById('batataBacon');
+      
+      if (select.value) {
+        const [baseName, basePrice] = select.value.split('|');
+        let priceNum = parseFloat(basePrice);
+        let fullName = baseName;
+        const additions = [];
+        
+        if (cheddarCheckbox.checked) {
+          priceNum += 5.00;
+          additions.push('+ Cheddar');
+        }
+        
+        if (baconCheckbox.checked) {
+          priceNum += 10.00;
+          additions.push('+ Bacon');
+        }
+        
+        if (additions.length > 0) {
+          fullName = baseName + '\n' + additions.join('\n');
+        }
+
+        if (simpleNotes) {
+          fullName = fullName + '\nObs: ' + simpleNotes;
+        }
+        
+        const existingItem = cart.find(c => c.name === fullName);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: fullName, price: priceNum, quantity: 1 });
+        }
+        
+        select.value = '';
+        cheddarCheckbox.checked = false;
+        baconCheckbox.checked = false;
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function addRefriToCart(selectId) {
+      const select = document.getElementById(selectId);
+      if (select.value) {
+        const [name, price] = select.value.split('|');
+        const priceNum = parseFloat(price);
+        
+        let fullName = name;
+        if (simpleNotes) {
+          fullName = name + '\nObs: ' + simpleNotes;
+        }
+        
+        const existingItem = cart.find(c => c.name === fullName);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: fullName, price: priceNum, quantity: 1 });
+        }
+        select.value = '';
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function addSucoToCart() {
+      const select = document.getElementById('sucoSel');
+      if (select.value) {
+        let name = select.value;
+        
+        if (simpleNotes) {
+          name = name + '\nObs: ' + simpleNotes;
+        }
+        
+        const existingItem = cart.find(c => c.name === name);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: name, price: 8.00, quantity: 1 });
+        }
+        select.value = '';
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function addCremeToCart() {
+      const select = document.getElementById('cremeSel');
+      if (select.value) {
+        let name = select.value;
+        
+        if (simpleNotes) {
+          name = name + '\nObs: ' + simpleNotes;
+        }
+        
+        const existingItem = cart.find(c => c.name === name);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: name, price: 14.00, quantity: 1 });
+        }
+        select.value = '';
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function addCaldoToCart() {
+      const select = document.getElementById('caldoSel');
+      if (select.value) {
+        const [name, price] = select.value.split('|');
+        const priceNum = parseFloat(price);
+        
+        let fullName = name;
+        if (simpleNotes) {
+          fullName = name + '\nObs: ' + simpleNotes;
+        }
+        
+        const existingItem = cart.find(c => c.name === fullName);
+        if (existingItem) {
+          existingItem.quantity += 1;
+        } else {
+          cart.push({ name: fullName, price: priceNum, quantity: 1 });
+        }
+        select.value = '';
+        simpleNotes = '';
+        updateCart();
+      }
+    }
+
+    function updateQuantity(index, change) {
+      cart[index].quantity += change;
+      if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+      }
+      updateCart();
+    }
+
+    function removeFromCart(index, event) {
+      event.stopPropagation();
+      cart.splice(index, 1);
+      updateCart();
+    }
+
+    function updateCart() {
+      const cartCount = document.getElementById('cartCount');
+      const cartItems = document.getElementById('cartItems');
+      const cartTotal = document.getElementById('cartTotal');
+      const totalPrice = document.getElementById('totalPrice');
+      const subtotalPrice = document.getElementById('subtotalPrice');
+      const deliveryFeePrice = document.getElementById('deliveryFeePrice');
+
+      const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+      cartCount.textContent = totalItems;
+
+      if (cart.length === 0) {
+        cartItems.innerHTML = '<p class="text-gray-300 text-center py-8">Carrinho vazio</p>';
+        cartTotal.classList.add('hidden');
+      } else {
+        cartItems.innerHTML = cart.map((item, index) => {
+          return `
+          <div class="py-3 border-b border-white/10">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex-1 min-w-0">
+                <p class="text-orange-300 font-semibold text-sm item-description break-words">${item.name}</p>
+                <p class="text-gray-400 text-xs">R$ ${item.price.toFixed(2).replace('.', ',')}</p>
+              </div>
+              <button type="button" onclick="removeFromCart(${index}, event)" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded transition-all duration-300 text-xs ml-2 flex-shrink-0">
+                ✕
+              </button>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" onclick="updateQuantity(${index}, -1)" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-1 px-2 rounded text-sm">−</button>
+              <span class="text-white font-semibold text-sm">${item.quantity}</span>
+              <button type="button" onclick="updateQuantity(${index}, 1)" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-1 px-2 rounded text-sm">+</button>
+            </div>
+          </div>
+        `;
+        }).join('');
+
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const deliveryFee = 3.00;
+        const total = subtotal + deliveryFee;
+        
+        subtotalPrice.textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
+        deliveryFeePrice.textContent = 'R$ ' + deliveryFee.toFixed(2).replace('.', ',');
+        totalPrice.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+        cartTotal.classList.remove('hidden');
+      }
+    }
+
+    function toggleCart() {
+      const cartDropdown = document.getElementById('cartDropdown');
+      cartDropdown.classList.toggle('hidden');
+    }
+
+    function sendToWhatsApp() {
+      if (cart.length === 0) {
+        alert('Carrinho vazio!');
+        return;
+      }
+
+      const deliveryType = document.querySelector('input[name="deliveryType"]:checked').value;
+      const deliveryName = document.getElementById('deliveryName').value.trim();
+      const deliveryAddress = document.getElementById('deliveryAddress').value.trim();
+      const deliveryReference = document.getElementById('deliveryReference').value.trim();
+      const deliveryContact = document.getElementById('deliveryContact').value.trim();
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+
+      if (!deliveryName) {
+        alert('Por favor, preencha o nome completo!');
+        return;
+      }
+
+      if (deliveryType === 'entrega' && !deliveryAddress) {
+        alert('Por favor, preencha o endereço de entrega!');
+        return;
+      }
+
+      if (!deliveryContact) {
+        alert('Por favor, preencha o contato (WhatsApp)!');
+        return;
+      }
+
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const deliveryFee = deliveryType === 'entrega' ? 3.00 : 0;
+      const total = subtotal + deliveryFee;
+      
+      let message = '🍔 *EXPRESSO LANCHES* 🍔\n';
+      message += '════════════════════════\n\n';
+      
+      message += '📋 *ITENS DO PEDIDO:*\n';
+      message += '─────────────────────\n';
+      
+      cart.forEach((item, index) => {
+        const itemTotal = (item.price * item.quantity).toFixed(2).replace('.', ',');
+        message += `${index + 1}. ${item.name}\n`;
+        message += `   Qtd: ${item.quantity} | R$ ${itemTotal}\n\n`;
+      });
+      
+      message += '─────────────────────\n';
+      message += '💰 *RESUMO DO PAGAMENTO:*\n';
+      message += `Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+      if (deliveryFee > 0) {
+        message += `Taxa de entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}\n`;
+      }
+      message += `*TOTAL: R$ ${total.toFixed(2).replace('.', ',')}\n\n`;
+      
+      message += '👤 *DADOS DO CLIENTE:*\n';
+      message += `Nome: ${deliveryName}\n`;
+      message += `WhatsApp: ${deliveryContact}\n\n`;
+
+      if (deliveryType === 'entrega') {
+        message += '🚚 *ENTREGA:*\n';
+        message += `Endereço: ${deliveryAddress}\n`;
+        if (deliveryReference) {
+          message += `Referência: ${deliveryReference}\n`;
+        }
+        message += '\n';
+      } else {
+        message += '🏪 *RETIRADA NO BALCÃO*\n\n';
+      }
+
+      message += '💳 *FORMA DE PAGAMENTO:*\n';
+      const paymentLabels = {
+        'pix': 'PIX',
+        'cartao': 'CARTAO',
+        'dinheiro': 'DINHEIRO'
+      };
+      message += `${paymentLabels[paymentMethod]}\n`;
+
+      if (paymentMethod === 'dinheiro') {
+        const cashChange = document.querySelector('input[name="cashChange"]:checked').value;
+        if (cashChange === 'withChange') {
+          const changeAmount = document.getElementById('changeAmount').value;
+          if (changeAmount) {
+            message += `Troco para: R$ ${parseFloat(changeAmount).toFixed(2).replace('.', ',')}\n`;
+          }
+        } else {
+          message += 'Sem troco solicitado\n';
+        }
+      }
+      
+      message += '\n════════════════════════';
+
+      const phoneNumber = '62985505754';
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+      
+      window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    document.addEventListener('click', function(event) {
+      const cartDropdown = document.getElementById('cartDropdown');
+      const cartButton = event.target.closest('button');
+      
+      if (cartButton && cartButton.textContent.includes('Carrinho')) return;
+      if (cartDropdown.contains(event.target)) return;
+      
+      cartDropdown.classList.add('hidden');
+    });
+  </script>
+ 
+</body>
+</html>
